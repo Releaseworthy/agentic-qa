@@ -19,17 +19,17 @@ ChromaDB + Neo4j (Hybrid RAG, Python/uv) · LangSmith · ripgrep · GitHub Actio
 
 ## What it does
 
-| QA activity              | Workflow (`/skill` in Claude Code, `bun run agent <name>` headless)                                 | Backed by                                                          |
-| ------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Risk-based test planning | `qa-plan` — impacted areas ranked by risk, coverage, exit criteria                                  | `qa/impact.ts`, vault, code graph                                  |
-| AC refinement            | `refine-ac CARD-142` — ambiguities, rule conflicts, Given/When/Then, questions for Product          | knowledge MCP · [example](docs/examples/refine-ac-CARD-142.md)     |
-| Endpoint API tests       | `api-testgen "PATCH /api/cart/items/:productId"` — positive + negative per endpoint                 | API helpers, `seed`, rule boundaries                               |
-| API journey tests        | `api-journey-testgen "two customers race for the last units"` — chained calls, final business state | `tests/api/journeys/`                                              |
-| Post-dev UI QA           | `ui-qa FEAT-CART` — explore in parallel sessions, defects, manual cases, then Playwright specs      | `playwright-cli`, page objects                                     |
-| Ad hoc testing           | `adhoc-test "<charter>" [--defects]` — unscripted, evidence, minimal repro                          | `seed:session`, `playwright-cli`                                   |
-| Impact-based regression  | `regression --base origin/main` — select, run, triage flaky / test defect / product bug             | `qa/impact.ts` · [example](docs/examples/impact-pricing-change.md) |
-| Go/No-Go                 | `release-gate` — blockers, residual risks, sign-off                                                 | `qa/release-gate.ts` · [example](docs/examples/release-gate.md)    |
-| Learning loop            | `learn <PR#>` — review comments become vault learnings future runs follow                           | `add_learning`                                                     |
+| QA activity              | Workflow (`/skill` in Claude Code, `bun run agent <name>` headless)                                 | Backed by                                                                                |
+| ------------------------ | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Risk-based test planning | `qa-plan` — impacted areas ranked by risk, coverage, exit criteria                                  | `qa/impact.ts`, vault, code graph                                                        |
+| AC refinement            | `refine-ac CARD-142` — ambiguities, rule conflicts, Given/When/Then, questions for Product          | knowledge MCP · [example](docs/examples/refine-ac-CARD-142.md)                           |
+| Endpoint API tests       | `api-testgen "PATCH /api/cart/items/:productId"` — positive + negative per endpoint                 | API helpers, `seed`, rule boundaries                                                     |
+| API journey tests        | `api-journey-testgen "two customers race for the last units"` — chained calls, final business state | `tests/api/journeys/`                                                                    |
+| Post-dev UI QA           | `ui-qa FEAT-CART` — explore in parallel sessions, defects, manual cases, then Playwright specs      | `playwright-cli`, page objects                                                           |
+| Ad hoc testing           | `adhoc-test "<charter>" [--defects]` — unscripted, evidence, minimal repro                          | `seed:session`, `playwright-cli` · [example](docs/examples/adhoc-test-seeded-defects.md) |
+| Impact-based regression  | `regression --base origin/main` — select, run, triage flaky / test defect / product bug             | `qa/impact.ts` · [example](docs/examples/impact-pricing-change.md)                       |
+| Go/No-Go                 | `release-gate` — blockers, residual risks, sign-off                                                 | `qa/release-gate.ts` · [example](docs/examples/release-gate.md)                          |
+| Learning loop            | `learn <PR#>` — review comments become vault learnings future runs follow                           | `add_learning`                                                                           |
 
 ```mermaid
 flowchart LR
@@ -97,8 +97,14 @@ Independent explorers run in parallel, each with its own seeded data and browser
 
 `agents/run.ts` runs the same skills headless through the **Claude Agent SDK**. It sets a spend cap, a turn cap and
 pre-approved tools (anything else is denied), takes a JSON-schema result CI can act on, and saves a transcript plus
-cost and per-model usage to `out/agent-runs/<id>/`. A real run of `refine-ac CARD-142`: [output](docs/examples/refine-ac-CARD-142.md),
-[run summary](docs/examples/refine-ac-CARD-142.run.md).
+cost and per-model usage to `out/agent-runs/<id>/`.
+
+Two real headless runs:
+
+| Run                                              | Result                                                                                                                                                                                                                                                                                   | Cost  |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| `refine-ac CARD-142`                             | 13 questions for Product with proposed defaults, 8 Given/When/Then criteria with boundaries, and conflicts found with the free-shipping and discount-cap rules. Passed review on round 2. [Output](docs/examples/refine-ac-CARD-142.md) · [run](docs/examples/refine-ac-CARD-142.run.md) | $1.17 |
+| `adhoc-test "<cart and order totals>" --defects` | Haiku explorers in 5 parallel browser sessions found **all 4 planted defects**, each confirmed with an API repro and screenshots. [Notes](docs/examples/adhoc-test-seeded-defects.md) · [run](docs/examples/adhoc-test-seeded-defects.run.md)                                            | $0.77 |
 
 ### Hybrid RAG: the knowledge vault
 
