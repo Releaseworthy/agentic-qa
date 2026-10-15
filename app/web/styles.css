@@ -1,0 +1,135 @@
+:root {
+  --fg: #17233a;
+  --muted: #5d6879;
+  --accent: #087f7b;
+  --line: #d7e0e5;
+  --bg: #f5f7f9;
+  --error: #b42318;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font:
+    15px/1.5 system-ui,
+    sans-serif;
+  color: var(--fg);
+  background: var(--bg);
+}
+.topbar {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  padding: 12px 24px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 18px;
+}
+nav {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+nav a {
+  color: var(--fg);
+}
+main {
+  max-width: 960px;
+  margin: 24px auto;
+  padding: 0 16px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+.card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+}
+.price {
+  font-weight: 700;
+}
+.muted {
+  color: var(--muted);
+}
+form.stack {
+  display: grid;
+  gap: 12px;
+  max-width: 420px;
+}
+label {
+  display: grid;
+  gap: 4px;
+}
+input,
+select,
+button {
+  font: inherit;
+  padding: 6px 10px;
+}
+button {
+  cursor: pointer;
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+}
+button.secondary {
+  background: #fff;
+  color: var(--fg);
+  border: 1px solid var(--line);
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+th,
+td {
+  text-align: left;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.filters {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.totals {
+  margin-top: 16px;
+  max-width: 320px;
+  margin-left: auto;
+}
+.totals div {
+  display: flex;
+  justify-content: space-between;
+}
+.error {
+  color: var(--error);
+}
+#toast {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  background: var(--fg);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 6px;
+}
+#toast:empty {
+  display: none;
+}
+[hidden] {
+  display: none !important;
+}

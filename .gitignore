@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+.venv/
+
+# Python bytecode
+__pycache__/
+
+# RAG index (rebuilt by `bun run rag:build`)
+.rag/
+
+# Playwright output
+test-results/
+playwright-report/
+blob-report/
+.playwright-cli/
+
+# QA engines and agent runs (plans, impact reports, gate reports, transcripts)
+out/
+
+# machine-local overrides
+.env
+*.local
+.claude/settings.local.json
+
+# editors / OS
+.idea/
+.vscode/
+.DS_Store

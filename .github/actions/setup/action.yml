@@ -1,0 +1,55 @@
+name: Set up
+description: Bun at the pinned version and the locked packages; optionally uv + the Python env, and one Playwright browser.
+
+inputs:
+  browser:
+    description: chromium, firefox or webkit, installed with its OS libraries; empty for none (the Playwright image has them).
+    required: false
+    default: ''
+  python:
+    description: 'true to install uv and sync the RAG environment'
+    required: false
+    default: 'false'
+
+runs:
+  using: composite
+  steps:
+    # setup-bun unpacks Bun with unzip, which the Playwright image lacks.
+    - name: Install unzip
+      if: runner.os == 'Linux'
+      shell: bash
+      run: command -v unzip >/dev/null || { apt-get update -qq && apt-get install -y -qq --no-install-recommends unzip; }
+      env:
+        DEBIAN_FRONTEND: noninteractive
+
+    - uses: oven-sh/setup-bun@v2
+      with:
+        bun-version-file: package.json
+
+    - name: Install packages
+      shell: bash
+      run: bun install --frozen-lockfile
+
+    - name: Install ${{ inputs.browser }}
+      if: inputs.browser != ''
+      shell: bash
+      run: bunx playwright install --with-deps "$BROWSER"
+      env:
+        BROWSER: ${{ inputs.browser }}
+
+    - uses: astral-sh/setup-uv@v6
+      if: inputs.python == 'true'
+      with:
+        enable-cache: true
+
+    # The ONNX embedding model Chroma downloads on first use.
+    - uses: actions/cache@v4
+      if: inputs.python == 'true'
+      with:
+        path: ~/.cache/chroma
+        key: chroma-onnx-minilm-l6-v2
+
+    - name: Sync the RAG environment
+      if: inputs.python == 'true'
+      shell: bash
+      run: uv sync --frozen

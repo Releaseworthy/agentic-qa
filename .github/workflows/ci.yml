@@ -1,0 +1,208 @@
+name: QA pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '23 2 * * *' # nightly full regression
+  workflow_dispatch:
+    inputs:
+      full:
+        description: Run every test, ignoring change impact
+        type: boolean
+        default: true
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  checks:
+    name: lint · types · format · unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - run: bun run lint
+      - run: bun run typecheck
+      - run: bun run format:check
+      - run: bun run test:unit
+
+  rag:
+    name: hybrid RAG · ${{ matrix.graph }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        graph: [local, neo4j]
+    services:
+      neo4j:
+        image: ${{ matrix.graph == 'neo4j' && 'neo4j:5-community' || '' }}
+        env:
+          NEO4J_AUTH: neo4j/ci-password
+        ports: ['7687:7687']
+        options: >-
+          --health-cmd "cypher-shell -u neo4j -p ci-password 'RETURN 1'"
+          --health-interval 5s --health-timeout 5s --health-retries 30
+    env:
+      NEO4J_URI: ${{ matrix.graph == 'neo4j' && 'bolt://localhost:7687' || '' }}
+      NEO4J_PASSWORD: ci-password
+      LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+        with:
+          python: 'true'
+      - name: Build the index (ChromaDB + ${{ matrix.graph }} graph)
+        run: bun run rag:build
+      - name: Evaluate retrieval (vector vs graph vs hybrid)
+        run: bun run rag:eval
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: rag-eval-${{ matrix.graph }}
+          path: out/rag-eval.json
+
+  impact:
+    name: change impact
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      grep: ${{ steps.impact.outputs.grep }}
+      full: ${{ steps.mode.outputs.full }}
+      none: ${{ steps.impact.outputs.none }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - id: mode
+        run: echo "full=${{ github.event_name != 'pull_request' }}" >> "$GITHUB_OUTPUT"
+      - id: impact
+        name: Select tests by impact
+        if: github.event_name == 'pull_request'
+        run: bun run qa:impact --base "origin/$BASE"
+        env:
+          BASE: ${{ github.base_ref }}
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'pull_request'
+        with:
+          name: impact
+          path: out/impact.*
+
+  tests:
+    name: ${{ matrix.project }}${{ matrix.shard != '1/1' && format(' · {0}', matrix.shard) || '' }}
+    needs: impact
+    if: needs.impact.outputs.full == 'true' || needs.impact.outputs.none != 'true'
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.64.1-noble
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { project: api, shard: 1/1 }
+          - { project: chromium, shard: 1/2 }
+          - { project: chromium, shard: 2/2 }
+          - { project: firefox, shard: 1/1 }
+          - { project: webkit, shard: 1/1 }
+    env:
+      HOME: /root
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - name: Test
+        run: |
+          args=(--project="$PROJECT" --shard="$SHARD")
+          if [ "$FULL" != "true" ] && [ -n "$GREP" ]; then args+=(--grep "$GREP"); fi
+          bun --bun playwright test "${args[@]}" --pass-with-no-tests
+        env:
+          PROJECT: ${{ matrix.project }}
+          SHARD: ${{ matrix.shard }}
+          FULL: ${{ needs.impact.outputs.full }}
+          GREP: ${{ needs.impact.outputs.grep }}
+          PLAYWRIGHT_BLOB_OUTPUT_NAME: ${{ matrix.project }}-${{ strategy.job-index }}.zip
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: blob-${{ matrix.project }}-${{ strategy.job-index }}
+          path: blob-report/
+          retention-days: 7
+
+  defects:
+    name: seeded-defect detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - name: Every seeded defect must be caught by the suite
+        run: bun run qa:defects
+
+  report:
+    name: traceability · release gate
+    needs: [tests, defects]
+    if: ${{ !cancelled() && needs.tests.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      decision: ${{ steps.gate.outputs.decision }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: blob-*
+          path: all-blob-reports
+          merge-multiple: true
+      - name: Merge into one HTML + JSON report
+        run: bun --bun playwright merge-reports --config=playwright.config.ts --reporter=html,json all-blob-reports
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: out/results.json
+      - name: Traceability
+        run: bun run qa:trace --results out/results.json
+      - name: Go/No-Go
+        id: gate
+        run: bun run qa:gate --results out/results.json
+      - name: Publish layout
+        run: |
+          mkdir -p site
+          cp -r playwright-report site/report
+          cp out/release-gate.md out/traceability.md site/
+          bun run scripts/site-index.ts site
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qa-report
+          path: |
+            site/
+            out/*.json
+          retention-days: 30
+      - uses: actions/upload-pages-artifact@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: site
+
+  pages:
+    name: publish report
+    needs: report
+    if: ${{ !cancelled() && needs.report.result == 'success' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,71 @@
+# Retrieval golden set: a question a QA engineer or an agent asks, and the
+# documents that answer it (any of `expected` in the top k counts as a hit;
+# the first listed is the best answer). `facts` are what a correct answer must
+# say — used by `rag.eval --answers`.
+
+- q: Is shipping free on an order of exactly fifty dollars?
+  expected: [BR-SHIP-01]
+  facts: ['free', '50.00']
+- q: Does a coupon discount count towards the free shipping threshold?
+  expected: [BR-SHIP-01, FEAT-COUPON]
+  facts: ['after the discount']
+- q: What happens to stock when a customer cancels an order?
+  expected: [BR-ORD-02, FEAT-ORDERS]
+  facts: ['back in stock']
+- q: Can a shipped order be cancelled?
+  expected: [BR-ORD-01, FEAT-ORDERS]
+  facts: ['409', 'placed']
+- q: How many failed sign-ins lock an account and for how long?
+  expected: [BR-AUTH-02]
+  facts: ['five', '15 minutes']
+- q: What are the password requirements?
+  expected: [BR-AUTH-01]
+  facts: ['8', '64', 'digit']
+- q: What is the maximum quantity of one product in the cart?
+  expected: [BR-CART-01]
+  facts: ['10']
+- q: Which rules govern the shopping cart?
+  expected: [FEAT-CART, BR-CART-01, BR-CART-02]
+  facts: ['BR-CART-01', 'BR-CART-02']
+- q: Can I combine two coupons in one cart?
+  expected: [BR-COUP-01]
+  facts: ['one coupon', 'replaces']
+- q: Why was my coupon removed after I took an item out of the cart?
+  expected: [BR-COUP-02]
+  facts: ['minimum']
+- q: What is the cap on the BIGSPENDER discount?
+  expected: [BR-COUP-04, FEAT-COUPON]
+  facts: ['30']
+- q: Which test card number is always declined?
+  expected: [BR-PAY-01, FEAT-CHECKOUT]
+  facts: ['4000000000000002']
+- q: What does the API answer when another customer's order id is requested?
+  expected: [BR-ORD-03]
+  facts: ['404']
+- q: Is stock reserved while products sit in a cart?
+  expected: [BR-CART-02, FEAT-CART]
+  facts: ['not']
+- q: Are there known open defects in checkout?
+  expected: [DEF-001, FEAT-CHECKOUT]
+  facts: ['DEF-001', 'lower-case']
+- q: What is still unclear about gift wrapping?
+  expected: [CARD-142]
+  facts: ['gift']
+- q: How should UI tests wait after clicking a button?
+  expected: [LRN-UI-WAITS]
+  facts: ['waitForResponse']
+- q: Should tests use the seeded products when they buy something?
+  expected: [LRN-TEST-DATA]
+  facts: ['seed.product']
+- q: Is there a manual test case for the cart quantity limit?
+  expected: [TC-CART-001]
+  facts: ['TC-CART-001']
+- q: BR-SHIP-01
+  expected: [BR-SHIP-01]
+  facts: ['4.99']
+- q: What does refund on cancellation change?
+  expected: [CARD-157, FEAT-ORDERS]
+  facts: ['refund']
+- q: Which endpoints does checkout use?
+  expected: [FEAT-CHECKOUT]
+  facts: ['POST /api/orders']

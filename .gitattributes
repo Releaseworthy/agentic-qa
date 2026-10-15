@@ -1,0 +1,2 @@
+# LF line endings on every OS (matches Prettier's endOfLine)
+* text=auto eol=lf

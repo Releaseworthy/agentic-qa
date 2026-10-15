@@ -1,0 +1,12 @@
+node_modules/
+.venv/
+.rag/
+out/
+playwright-report/
+test-results/
+blob-report/
+.playwright-cli/
+bun.lock
+uv.lock
+knowledge/
+.claude/

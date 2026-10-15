@@ -1,0 +1,26 @@
+# The knowledge MCP endpoint with its Neo4j graph, locally:
+#   docker compose up --build        → MCP at http://localhost:8765/mcp, Neo4j browser at http://localhost:7474
+services:
+  neo4j:
+    image: neo4j:5-community
+    environment:
+      NEO4J_AUTH: neo4j/local-password
+    ports: ['7474:7474', '7687:7687']
+    healthcheck:
+      test: ['CMD', 'cypher-shell', '-u', 'neo4j', '-p', 'local-password', 'RETURN 1']
+      interval: 5s
+      retries: 30
+
+  knowledge:
+    build:
+      context: .
+      dockerfile: rag/Dockerfile
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_PASSWORD: local-password
+    # Re-index into Neo4j on start (the image's own index is ChromaDB + the local graph).
+    command: ['sh', '-c', 'uv run --no-sync python -m rag.build && uv run --no-sync python -m rag.server --http']
+    ports: ['8765:8765']
+    depends_on:
+      neo4j:
+        condition: service_healthy

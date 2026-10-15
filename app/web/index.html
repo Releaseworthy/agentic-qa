@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ShopLite</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#/">ShopLite</a>
+      <nav aria-label="Main">
+        <a href="#/">Catalog</a>
+        <a href="#/cart">Cart <span id="cart-count" aria-label="items in cart">0</span></a>
+        <a href="#/orders" data-auth="in">Orders</a>
+        <a href="#/login" data-auth="out">Sign in</a>
+        <a href="#/register" data-auth="out">Register</a>
+        <span id="user-name" data-auth="in"></span>
+        <button type="button" id="logout" data-auth="in">Sign out</button>
+      </nav>
+    </header>
+    <main id="view" tabindex="-1"></main>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script src="/app.js"></script>
+  </body>
+</html>

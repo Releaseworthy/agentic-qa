@@ -1,0 +1,120 @@
+# Azure DevOps equivalent of .github/workflows/ci.yml + agentic-qa.yml:
+# quality gates, parallel regression in the Playwright image with results
+# published to Azure Test Plans (Test Runs), the Go/No-Go gate, and the
+# Claude Agent SDK regression workflow when a key is configured.
+#
+# Variables (pipeline or variable group): ANTHROPIC_API_KEY (secret, optional).
+
+trigger:
+  branches:
+    include: [main]
+pr:
+  branches:
+    include: [main]
+
+variables:
+  PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.64.1-noble
+
+stages:
+  - stage: Quality
+    jobs:
+      - job: checks
+        displayName: lint · types · unit
+        pool: { vmImage: ubuntu-latest }
+        steps:
+          - script: curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.3" && echo "##vso[task.prependpath]$HOME/.bun/bin"
+            displayName: Install Bun
+          - script: bun install --frozen-lockfile
+          - script: bun run lint && bun run typecheck && bun run test:unit
+            displayName: Lint, types, unit tests
+
+  - stage: Regression
+    dependsOn: Quality
+    jobs:
+      - job: tests
+        displayName: Playwright
+        pool: { vmImage: ubuntu-latest }
+        container: $[ variables['PLAYWRIGHT_IMAGE'] ]
+        strategy:
+          matrix:
+            api: { PROJECT: api }
+            chromium: { PROJECT: chromium }
+            firefox: { PROJECT: firefox }
+            webkit: { PROJECT: webkit }
+          maxParallel: 4
+        steps:
+          - script: curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.3" && echo "##vso[task.prependpath]$HOME/.bun/bin"
+            displayName: Install Bun
+          - script: bun install --frozen-lockfile
+          - script: bun --bun playwright test --project=$(PROJECT)
+            displayName: Test $(PROJECT)
+            env:
+              CI: 'true'
+              PW_JSON_OUTPUT: out/results-$(PROJECT).json
+          - task: PublishTestResults@2
+            displayName: Publish to Test Runs
+            condition: succeededOrFailed()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: test-results/junit.xml
+              testRunTitle: Regression · $(PROJECT)
+              mergeTestResults: true
+          - publish: out/results-$(PROJECT).json
+            artifact: results-$(PROJECT)
+            condition: succeededOrFailed()
+          - publish: playwright-report
+            artifact: playwright-report-$(PROJECT)
+            condition: failed()
+
+      - job: defects
+        displayName: Seeded-defect detection
+        pool: { vmImage: ubuntu-latest }
+        steps:
+          - script: curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.3" && echo "##vso[task.prependpath]$HOME/.bun/bin"
+            displayName: Install Bun
+          - script: bun install --frozen-lockfile && bun run qa:defects
+
+  - stage: Gate
+    dependsOn: Regression
+    condition: succeededOrFailed()
+    jobs:
+      - job: gate
+        displayName: Go/No-Go
+        pool: { vmImage: ubuntu-latest }
+        steps:
+          - script: curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.3" && echo "##vso[task.prependpath]$HOME/.bun/bin"
+            displayName: Install Bun
+          - script: bun install --frozen-lockfile
+          - download: current
+            patterns: 'results-*/*.json'
+          - script: |
+              for f in $(Pipeline.Workspace)/results-*/*.json; do
+                bun run qa:gate --results "$f"
+              done
+            displayName: Release assessment per project
+
+  - stage: Agentic
+    dependsOn: Quality
+    condition: and(succeeded(), ne(variables['ANTHROPIC_API_KEY'], ''))
+    jobs:
+      - job: agent
+        displayName: Claude Agent SDK · impact-based regression
+        pool: { vmImage: ubuntu-latest }
+        container: $[ variables['PLAYWRIGHT_IMAGE'] ]
+        timeoutInMinutes: 60
+        steps:
+          - checkout: self
+            fetchDepth: 0
+          - script: |
+              curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.3" && echo "##vso[task.prependpath]$HOME/.bun/bin"
+              curl -LsSf https://astral.sh/uv/install.sh | sh && echo "##vso[task.prependpath]$HOME/.local/bin"
+            displayName: Install Bun and uv
+          - script: bun install --frozen-lockfile && uv sync --frozen && bun run rag:build
+            displayName: Packages and RAG index
+          - script: bun run agent regression --base origin/main
+            displayName: Agentic regression
+            env:
+              ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
+          - publish: out/agent-runs
+            artifact: agent-runs
+            condition: succeededOrFailed()

@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "knowledge": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--quiet", "python", "-m", "rag.server"]
+    },
+    "codesearch": {
+      "type": "stdio",
+      "command": "bun",
+      "args": ["run", "codesearch/mcp.ts"]
+    }
+  }
+}

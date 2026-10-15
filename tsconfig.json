@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    "lib": ["ESNext", "DOM"],
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "types": ["bun", "node"],
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+
+    "paths": {
+      "@api": ["./framework/api/index.ts"],
+      "@api/*": ["./framework/api/*"],
+      "@config": ["./framework/config.ts"],
+      "@data/*": ["./framework/data/*"],
+      "@fixtures": ["./framework/fixtures.ts"],
+      "@pages/*": ["./framework/pages/*"],
+      "@setup/*": ["./framework/setup/*"],
+      "@qa/*": ["./qa/*"],
+      "@codesearch/*": ["./codesearch/*"]
+    },
+
+    "strict": true,
+    "skipLibCheck": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": [
+    "app",
+    "framework",
+    "tests",
+    "qa",
+    "codesearch",
+    "agents",
+    "scripts",
+    "playwright.config.ts",
+    "eslint.config.ts"
+  ],
+  "exclude": ["app/web"]
+}

@@ -1,0 +1,20 @@
+{
+  "enableAllProjectMcpServers": true,
+  "permissions": {
+    "allow": [
+      "mcp__knowledge",
+      "mcp__codesearch",
+      "Bash(bun run *)",
+      "Bash(bun test *)",
+      "Bash(bunx playwright test *)",
+      "Bash(bunx playwright-cli *)",
+      "Bash(uv run *)",
+      "Bash(git diff *)",
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(gh pr view *)",
+      "Bash(gh api *)"
+    ],
+    "deny": ["Bash(git push *)", "Bash(rm -rf *)"]
+  }
+}
