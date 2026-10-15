@@ -1,8 +1,8 @@
-import { createProduct } from '../domain/catalog';
-import { createCoupon } from '../domain/coupons';
-import { shipOrder } from '../domain/orders';
-import { adminUser, body, HttpError, int, json, str, type Route } from '../http';
-import type { Coupon, Product } from '../store';
+import { createProduct } from '@app/domain/catalog';
+import { createCoupon } from '@app/domain/coupons';
+import { shipOrder } from '@app/domain/orders';
+import { adminUser, body, HttpError, int, json, str, type Route } from '@app/http';
+import type { Coupon, Product } from '@app/store';
 
 function nullableInt(data: Record<string, unknown>, key: string): number | null {
   if (data[key] === undefined || data[key] === null) return null;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { analyzeImpact } from '../../qa/impact';
-import { codeIndex, test, vault } from './fakes';
+import { analyzeImpact } from '@qa/impact';
+import { codeIndex, test, vault } from '@tests/unit/fakes';
 
 const tests = [
   test({ tags: ['FEAT-CART', 'BR-CART-01'], file: 'tests/api/cart.spec.ts' }),

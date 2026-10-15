@@ -2,19 +2,23 @@
  * ShopLite — the system under test. A small shop with a REST API (/api/*) and
  * a single-page UI (/). In-memory, so every start is a clean seed.
  *
- *   bun run app                     http://localhost:3100
- *   SHOPLITE_DEFECTS=all bun run app   with the seeded defects on (see defects.ts)
+ * Started through framework/setup/app-server.ts, which sets it up as a TEST_ENV:
+ *
+ *   bun run app                          dev, http://localhost:3100
+ *   TEST_ENV=staging bun run app         staging stand-in, :3200
+ *   SHOPLITE_DEFECTS=all bun run app     with the seeded defects on (see defects.ts)
  */
 
 import { join } from 'node:path';
-import { enabledDefects } from './defects';
-import { compile, errorResponse, HttpError, json, type Handler, type Route } from './http';
-import { adminRoutes } from './routes/admin';
-import { authRoutes } from './routes/auth';
-import { cartRoutes } from './routes/cart';
-import { orderRoutes } from './routes/orders';
-import { productRoutes } from './routes/products';
-import { testHookRoutes } from './routes/test-hooks';
+import { enabledDefects } from '@app/defects';
+import { compile, errorResponse, HttpError, json, type Handler, type Route } from '@app/http';
+import { adminRoutes } from '@app/routes/admin';
+import { authRoutes } from '@app/routes/auth';
+import { cartRoutes } from '@app/routes/cart';
+import { orderRoutes } from '@app/routes/orders';
+import { productRoutes } from '@app/routes/products';
+import { testHookRoutes } from '@app/routes/test-hooks';
+import { ENVIRONMENT } from '@app/store';
 
 const PORT = Number(process.env.PORT ?? 3100);
 const WEB = join(import.meta.dir, 'web');
@@ -53,7 +57,7 @@ const server = Bun.serve({
   port: PORT,
   async fetch(req) {
     const path = new URL(req.url).pathname;
-    if (path === '/health') return json({ ok: true, defects: enabledDefects() });
+    if (path === '/health') return json({ ok: true, env: ENVIRONMENT, defects: enabledDefects() });
     if (path.startsWith('/api/')) {
       try {
         return await handleApi(req, path);
@@ -70,5 +74,5 @@ const server = Bun.serve({
 
 const defects = enabledDefects();
 console.log(
-  `ShopLite on http://localhost:${server.port}${defects.length ? ` — seeded defects ON: ${defects.join(', ')}` : ''}`,
+  `ShopLite (${ENVIRONMENT}) on http://localhost:${server.port}${defects.length ? ` — seeded defects ON: ${defects.join(', ')}` : ''}`,
 );

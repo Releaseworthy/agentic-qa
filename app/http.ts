@@ -1,4 +1,4 @@
-import { store, type User } from './store';
+import { store, type User } from '@app/store';
 
 /** A refused request: becomes `{ error: { code, message } }` with `status`. */
 export class HttpError extends Error {

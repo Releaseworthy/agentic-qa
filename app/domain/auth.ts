@@ -1,5 +1,5 @@
-import { HttpError } from '../http';
-import { store, type User } from '../store';
+import { HttpError } from '@app/http';
+import { store, type User } from '@app/store';
 
 /** BR-AUTH-02: five failed logins in a row lock the account for 15 minutes. */
 export const MAX_FAILED_LOGINS = 5;
@@ -8,6 +8,8 @@ const SESSION_MS = 8 * 60 * 60_000;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export type PublicUser = Pick<User, 'id' | 'email' | 'name' | 'role'>;
+/** What register and login answer: the user, a bearer token and when it expires (ISO 8601). */
+export type AuthResult = { user: PublicUser; token: string; expiresAt: string };
 
 export function publicUser(u: User): PublicUser {
   return { id: u.id, email: u.email, name: u.name, role: u.role };
@@ -19,13 +21,14 @@ export function checkPassword(password: string): void {
     throw new HttpError(400, 'WEAK_PASSWORD', 'Password needs 8-64 characters, with a letter and a digit');
 }
 
-function issueToken(user: User): string {
+function signIn(user: User): AuthResult {
   const token = crypto.randomUUID().replaceAll('-', '') + crypto.randomUUID().replaceAll('-', '');
-  store.sessions.set(token, { token, userId: user.id, expiresAt: Date.now() + SESSION_MS });
-  return token;
+  const expiresAt = Date.now() + SESSION_MS;
+  store.sessions.set(token, { token, userId: user.id, expiresAt });
+  return { user: publicUser(user), token, expiresAt: new Date(expiresAt).toISOString() };
 }
 
-export function register(email: string, password: string, name: string): { user: PublicUser; token: string } {
+export function register(email: string, password: string, name: string): AuthResult {
   const normalized = email.toLowerCase();
   if (!EMAIL.test(normalized)) throw new HttpError(400, 'INVALID_EMAIL', 'Email address is not valid');
   if (name.length > 80) throw new HttpError(400, 'VALIDATION', 'Name is at most 80 characters');
@@ -42,10 +45,10 @@ export function register(email: string, password: string, name: string): { user:
     lockedUntil: null,
   };
   store.users.set(user.id, user);
-  return { user: publicUser(user), token: issueToken(user) };
+  return signIn(user);
 }
 
-export function login(email: string, password: string): { user: PublicUser; token: string } {
+export function login(email: string, password: string): AuthResult {
   const user = store.userByEmail(email);
   // Same answer for an unknown email and a wrong password: no account enumeration.
   const invalid = new HttpError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect');
@@ -63,7 +66,7 @@ export function login(email: string, password: string): { user: PublicUser; toke
   }
   user.failedLogins = 0;
   user.lockedUntil = null;
-  return { user: publicUser(user), token: issueToken(user) };
+  return signIn(user);
 }
 
 export function logout(token: string): void {

@@ -3,7 +3,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT } from './vault';
+import { ROOT } from '@qa/vault';
 
 export type TestStatus = 'expected' | 'unexpected' | 'flaky' | 'skipped' | 'listed';
 

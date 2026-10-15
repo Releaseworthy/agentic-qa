@@ -1,6 +1,6 @@
-import { defect } from '../defects';
-import { HttpError } from '../http';
-import { store, type Coupon } from '../store';
+import { defect } from '@app/defects';
+import { HttpError } from '@app/http';
+import { store, type Coupon } from '@app/store';
 
 export function findCoupon(code: string): Coupon {
   const coupon = store.coupons.get(code.trim().toUpperCase());

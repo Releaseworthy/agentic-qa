@@ -1,5 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { BasePage } from '@pages/base-page';
+import { step } from '@utils/step';
 
 /** The totals block, shared by the cart, checkout and order pages. */
 export class Totals {
@@ -41,6 +42,7 @@ export class CartPage extends BasePage {
     this.totals = new Totals(page);
   }
 
+  @step('Open the cart')
   goto(): Promise<void> {
     return this.open('/cart');
   }
@@ -54,6 +56,7 @@ export class CartPage extends BasePage {
   }
 
   /** Changes a line's quantity and waits for the cart to re-render with the server's answer. */
+  @step((productName: string, quantity: number) => `Set ${productName} to ${quantity} in the cart`)
   async setQuantity(productName: string, quantity: number): Promise<void> {
     const answered = this.page.waitForResponse((r) => r.url().includes('/api/cart/items/'));
     await this.quantityOf(productName).fill(String(quantity));
@@ -61,12 +64,14 @@ export class CartPage extends BasePage {
     await answered;
   }
 
+  @step((productName: string) => `Remove ${productName} from the cart`)
   async remove(productName: string): Promise<void> {
     const answered = this.page.waitForResponse((r) => r.url().endsWith('/api/cart'));
     await this.page.getByRole('button', { name: `Remove ${productName}` }).click();
     await answered;
   }
 
+  @step((code: string) => `Apply coupon ${code}`)
   async applyCoupon(code: string): Promise<void> {
     await this.couponCode.fill(code);
     const answered = this.page.waitForResponse((r) => r.url().endsWith('/api/cart/coupon'));

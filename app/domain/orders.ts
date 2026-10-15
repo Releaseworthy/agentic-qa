@@ -1,10 +1,10 @@
-import { defect } from '../defects';
-import { HttpError } from '../http';
-import { store, type Address, type Order, type User } from '../store';
-import { clearCart, viewCart } from './cart';
-import { getProduct } from './catalog';
-import { checkCoupon } from './coupons';
-import { charge, type Card } from './payments';
+import { defect } from '@app/defects';
+import { HttpError } from '@app/http';
+import { store, type Address, type Order, type User } from '@app/store';
+import { clearCart, viewCart } from '@app/domain/cart';
+import { getProduct } from '@app/domain/catalog';
+import { checkCoupon } from '@app/domain/coupons';
+import { charge, type Card } from '@app/domain/payments';
 
 export function checkAddress(a: Address): void {
   for (const key of ['name', 'line1', 'city', 'postalCode', 'country'] as const)

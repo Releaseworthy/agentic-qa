@@ -25,6 +25,16 @@ body {
   background: #fff;
   border-bottom: 1px solid var(--line);
 }
+#env-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #b45309;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .brand {
   font-weight: 700;
   color: var(--accent);

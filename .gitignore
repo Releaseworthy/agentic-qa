@@ -17,6 +17,9 @@ blob-report/
 # QA engines and agent runs (plans, impact reports, gate reports, transcripts)
 out/
 
+# saved sign-ins (storage states), per environment
+.auth/
+
 # machine-local overrides
 .env
 *.local

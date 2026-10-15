@@ -8,9 +8,9 @@
  */
 
 import { parseArgs } from 'node:util';
-import { table, writeReport } from './report';
-import { listTests, readResults, traceTags, type TestRecord } from './tests-catalog';
-import { SEVERITY_RANK, Vault, type Severity } from './vault';
+import { table, writeReport } from '@qa/report';
+import { listTests, readResults, traceTags, type TestRecord } from '@qa/tests-catalog';
+import { SEVERITY_RANK, Vault, type Severity } from '@qa/vault';
 
 export type TraceRow = {
   id: string;

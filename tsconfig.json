@@ -10,15 +10,20 @@
     "noEmit": true,
 
     "paths": {
+      "@agents/*": ["./agents/*"],
       "@api": ["./framework/api/index.ts"],
       "@api/*": ["./framework/api/*"],
-      "@config": ["./framework/config.ts"],
+      "@app/*": ["./app/*"],
+      "@auth/*": ["./framework/auth/*"],
+      "@codesearch/*": ["./codesearch/*"],
+      "@config/*": ["./framework/config/*"],
       "@data/*": ["./framework/data/*"],
       "@fixtures": ["./framework/fixtures.ts"],
       "@pages/*": ["./framework/pages/*"],
-      "@setup/*": ["./framework/setup/*"],
       "@qa/*": ["./qa/*"],
-      "@codesearch/*": ["./codesearch/*"]
+      "@setup/*": ["./framework/setup/*"],
+      "@tests/*": ["./tests/*"],
+      "@utils/*": ["./framework/utils/*"]
     },
 
     "strict": true,

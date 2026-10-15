@@ -17,10 +17,10 @@
  */
 
 import { parseArgs } from 'node:util';
-import { table, setOutputs, writeReport } from './report';
-import { listTests, readResults, traceTags, type TestRecord } from './tests-catalog';
-import { trace } from './traceability';
-import { SEVERITY_RANK, Vault } from './vault';
+import { table, setOutputs, writeReport } from '@qa/report';
+import { listTests, readResults, traceTags, type TestRecord } from '@qa/tests-catalog';
+import { trace } from '@qa/traceability';
+import { SEVERITY_RANK, Vault } from '@qa/vault';
 
 export type Decision = 'GO' | 'CONDITIONAL GO' | 'NO-GO';
 

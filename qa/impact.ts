@@ -21,10 +21,10 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { codeIndex, type CodeIndex } from '../codesearch/index';
-import { setOutputs, table, writeReport } from './report';
-import { listTests, traceTags, type TestRecord } from './tests-catalog';
-import { ROOT, Vault } from './vault';
+import { codeIndex, type CodeIndex } from '@codesearch/index';
+import { setOutputs, table, writeReport } from '@qa/report';
+import { listTests, traceTags, type TestRecord } from '@qa/tests-catalog';
+import { ROOT, Vault } from '@qa/vault';
 
 export type ChangedFile = { path: string; linesChanged: number };
 
@@ -55,8 +55,11 @@ export type ImpactReport = {
 /** Changing one of these can break anything: run the whole suite. */
 const GLOBAL = [
   /^app\/(server|store|http)\.ts$/,
-  /^framework\/(config|fixtures)\.ts$/,
+  /^framework\/(fixtures|global-setup)\.ts$/,
+  /^framework\/(config|auth|utils)\//,
   /^framework\/api\/client\.ts$/,
+  /^framework\/setup\/app-server\.ts$/,
+  /^env\//,
   /^playwright\.config\.ts$/,
   /^package\.json$/,
   /^bun\.lock$/,

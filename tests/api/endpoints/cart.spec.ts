@@ -4,10 +4,10 @@ test.describe('POST /api/cart/items', { tag: '@FEAT-CART' }, () => {
   test('adds a line and prices it', { tag: '@smoke' }, async ({ api, seed, customer }) => {
     const product = await seed.product({ priceCents: 1250 });
     const cart = await api.as(customer).cart.add(product.id, 2);
-    expect(cart.items).toEqual([
+    expect(cart.items, 'one line: 2 × $12.50').toEqual([
       { productId: product.id, name: product.name, unitPriceCents: 1250, quantity: 2, lineTotalCents: 2500 },
     ]);
-    expect(cart.subtotalCents).toBe(2500);
+    expect(cart.subtotalCents, 'subtotal').toBe(2500);
   });
 
   test('merges a second add of the same product into one line', async ({ api, seed, customer }) => {
@@ -15,8 +15,8 @@ test.describe('POST /api/cart/items', { tag: '@FEAT-CART' }, () => {
     const me = api.as(customer).cart;
     await me.add(product.id, 2);
     const cart = await me.add(product.id, 3);
-    expect(cart.items).toHaveLength(1);
-    expect(cart.items[0]?.quantity).toBe(5);
+    expect(cart.items, 'still one line for the product').toHaveLength(1);
+    expect(cart.items[0]?.quantity, 'quantities added up: 2 + 3').toBe(5);
   });
 
   for (const quantity of [0, -1, 11])
@@ -27,7 +27,8 @@ test.describe('POST /api/cart/items', { tag: '@FEAT-CART' }, () => {
 
   test('accepts exactly 10 units', { tag: '@BR-CART-01' }, async ({ api, seed, customer }) => {
     const product = await seed.product();
-    expect((await api.as(customer).cart.add(product.id, 10)).items[0]?.quantity).toBe(10);
+    const cart = await api.as(customer).cart.add(product.id, 10);
+    expect(cart.items[0]?.quantity, 'the line holds the 10-unit maximum').toBe(10);
   });
 
   test('refuses adds that take a line above 10 units', { tag: '@BR-CART-01' }, async ({ api, seed, customer }) => {
@@ -35,13 +36,13 @@ test.describe('POST /api/cart/items', { tag: '@FEAT-CART' }, () => {
     const me = api.as(customer).cart;
     await me.add(product.id, 6);
     await expectRefused(me.add(product.id, 5), 422, 'QTY_LIMIT');
-    expect((await me.get()).items[0]?.quantity).toBe(6);
+    expect((await me.get()).items[0]?.quantity, 'the line keeps its 6 units after the refusal').toBe(6);
   });
 
   test('refuses more units than in stock', { tag: '@BR-CART-02' }, async ({ api, seed, customer }) => {
     const product = await seed.product({ stock: 3 });
     const error = await expectRefused(api.as(customer).cart.add(product.id, 4), 409, 'OUT_OF_STOCK');
-    expect(error.reason).toContain('Only 3');
+    expect(error.reason, 'the message says how many are left').toContain('Only 3');
   });
 
   test('refuses an out-of-stock product', { tag: '@BR-CART-02' }, async ({ api, seed, customer }) => {
@@ -56,7 +57,7 @@ test.describe('POST /api/cart/items', { tag: '@FEAT-CART' }, () => {
   test('refuses a non-integer quantity', async ({ api, seed, customer }) => {
     const product = await seed.product();
     const { status } = await api.as(customer).raw('POST', '/api/cart/items', { productId: product.id, quantity: 1.5 });
-    expect(status).toBe(400);
+    expect(status, 'HTTP status for quantity 1.5').toBe(400);
   });
 
   test('needs a signed-in user', async ({ api, seed }) => {
@@ -70,7 +71,7 @@ test.describe('PATCH /api/cart/items/:productId', { tag: '@FEAT-CART' }, () => {
     const product = await seed.product({ priceCents: 500 });
     await seed.cart(customer, [{ product }]);
     const cart = await api.as(customer).cart.update(product.id, 4);
-    expect(cart.items[0]).toMatchObject({ quantity: 4, lineTotalCents: 2000 });
+    expect(cart.items[0], 'line repriced: 4 × $5.00').toMatchObject({ quantity: 4, lineTotalCents: 2000 });
   });
 
   test('refuses a quantity above 10', { tag: '@BR-CART-01' }, async ({ api, seed, customer }) => {
@@ -88,7 +89,7 @@ test.describe('PATCH /api/cart/items/:productId', { tag: '@FEAT-CART' }, () => {
   test('quantity 0 removes the line', async ({ api, seed, customer }) => {
     const product = await seed.product();
     await seed.cart(customer, [{ product }]);
-    expect((await api.as(customer).cart.update(product.id, 0)).items).toEqual([]);
+    expect((await api.as(customer).cart.update(product.id, 0)).items, 'cart is empty').toEqual([]);
   });
 
   test('answers 404 for a product not in the cart', async ({ api, seed, customer }) => {
@@ -102,7 +103,10 @@ test.describe('DELETE /api/cart/items/:productId', { tag: '@FEAT-CART' }, () => 
     const [a, b] = [await seed.product(), await seed.product()];
     await seed.cart(customer, [{ product: a }, { product: b }]);
     const cart = await api.as(customer).cart.remove(a.id);
-    expect(cart.items.map((i) => i.productId)).toEqual([b.id]);
+    expect(
+      cart.items.map((i) => i.productId),
+      'only the other product is left',
+    ).toEqual([b.id]);
   });
 
   test('answers 404 for a product not in the cart', async ({ api, customer }) => {
@@ -112,7 +116,7 @@ test.describe('DELETE /api/cart/items/:productId', { tag: '@FEAT-CART' }, () => 
 
 test.describe('GET /api/cart', { tag: '@FEAT-CART' }, () => {
   test('a new customer has an empty cart with zero totals', async ({ api, customer }) => {
-    expect(await api.as(customer).cart.get()).toEqual({
+    expect(await api.as(customer).cart.get(), 'empty cart, no coupon, all totals 0').toEqual({
       items: [],
       couponCode: null,
       subtotalCents: 0,
@@ -126,6 +130,6 @@ test.describe('GET /api/cart', { tag: '@FEAT-CART' }, () => {
     const product = await seed.product();
     await seed.cart(customer, [{ product }]);
     const other = await seed.customer();
-    expect((await api.as(other).cart.get()).items).toEqual([]);
+    expect((await api.as(other).cart.get()).items, "the other customer's cart is still empty").toEqual([]);
   });
 });

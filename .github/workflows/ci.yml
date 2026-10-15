@@ -20,6 +20,10 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # Decrypts the saved accounts in env/ (the demo key is in README.md).
+  STRING_HEX_SHOPLITE: ${{ secrets.STRING_HEX_SHOPLITE }}
+
 defaults:
   run:
     shell: bash
@@ -138,6 +142,25 @@ jobs:
           name: blob-${{ matrix.project }}-${{ strategy.job-index }}
           path: blob-report/
           retention-days: 7
+
+  environments:
+    name: ${{ matrix.env }} · ${{ matrix.env == 'live' && 'read-only' || 'smoke' }}
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.64.1-noble
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        env: [staging, live]
+    env:
+      HOME: /root
+      TEST_ENV: ${{ matrix.env }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: ./.github/actions/setup
+      # Each env file starts its local stand-in (START_APP); live runs only the @readonly tests.
+      - name: Test ${{ matrix.env }}
+        run: bun --bun playwright test --project=api --project=chromium ${{ matrix.env == 'staging' && '--grep @smoke' || '' }}
 
   defects:
     name: seeded-defect detection

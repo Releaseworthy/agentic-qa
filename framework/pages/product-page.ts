@@ -1,5 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { BasePage } from '@pages/base-page';
+import { step } from '@utils/step';
 
 export class ProductPage extends BasePage {
   readonly title: Locator;
@@ -17,11 +18,13 @@ export class ProductPage extends BasePage {
     this.addToCartButton = page.getByRole('button', { name: 'Add to cart' });
   }
 
+  @step((productId: string) => `Open product ${productId}`)
   goto(productId: string): Promise<void> {
     return this.open(`/product/${productId}`);
   }
 
   /** Adds `quantity` and waits for the API's answer (the toast, or an error alert). */
+  @step((quantity?: number) => `Add ${quantity ?? 1} to the cart`)
   async addToCart(quantity = 1): Promise<void> {
     await this.quantity.fill(String(quantity));
     const answered = this.page.waitForResponse((r) => r.url().endsWith('/api/cart/items'));

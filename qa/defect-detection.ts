@@ -14,10 +14,11 @@ import { spawn, spawnSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { DEFECTS, type DefectId } from '../app/defects';
-import { table, writeReport } from './report';
-import { readResults } from './tests-catalog';
-import { ROOT } from './vault';
+import { DEFECTS, type DefectId } from '@app/defects';
+import { table, writeReport } from '@qa/report';
+import { readResults } from '@qa/tests-catalog';
+import { ROOT } from '@qa/vault';
+import { stopwatch, toMs } from '@utils/date';
 
 type Outcome = {
   defect: DefectId;
@@ -27,9 +28,9 @@ type Outcome = {
   otherFailures: number;
 };
 
-async function waitForHealth(url: string, ms = 20_000): Promise<void> {
-  const until = Date.now() + ms;
-  while (Date.now() < until) {
+async function waitForHealth(url: string, ms = toMs({ seconds: 20 })): Promise<void> {
+  const elapsed = stopwatch();
+  while (elapsed() < ms) {
     try {
       if ((await fetch(url)).ok) return;
     } catch {
@@ -41,9 +42,10 @@ async function waitForHealth(url: string, ms = 20_000): Promise<void> {
 }
 
 async function runAgainst(defect: DefectId, port: number, project: string): Promise<Outcome> {
-  const server = spawn(process.execPath, ['run', 'app/server.ts'], {
+  // The dev environment's build (test hooks, saved accounts) on a port of its own.
+  const server = spawn(process.execPath, ['run', 'framework/setup/app-server.ts'], {
     cwd: ROOT,
-    env: { ...process.env, PORT: String(port), SHOPLITE_DEFECTS: defect },
+    env: { ...process.env, TEST_ENV: 'dev', PORT: String(port), SHOPLITE_DEFECTS: defect },
     stdio: 'ignore',
   });
   try {
@@ -57,7 +59,9 @@ async function runAgainst(defect: DefectId, port: number, project: string): Prom
         cwd: ROOT,
         env: {
           ...process.env,
+          TEST_ENV: 'dev',
           BASE_URL: `http://localhost:${port}`,
+          START_APP: 'false',
           PLAYWRIGHT_JSON_OUTPUT_FILE: out,
           SHOPLITE_DEFECTS: defect,
           CI: '',
@@ -87,7 +91,7 @@ if (import.meta.main) {
   });
   const ids = (values.only ? values.only.split(',') : Object.keys(DEFECTS)) as DefectId[];
   const outcomes: Outcome[] = [];
-  let port = 3200;
+  let port = 3400; // clear of the dev/staging/live stand-ins on 3100–3300
   for (const id of ids) {
     if (!(id in DEFECTS)) throw new Error(`unknown defect ${id}`);
     console.error(`▶ ${id} (${DEFECTS[id]}) …`);

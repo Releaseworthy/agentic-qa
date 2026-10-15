@@ -1,6 +1,6 @@
-import type { CodeFile, CodeIndex } from '../../codesearch/index';
-import type { TestRecord } from '../../qa/tests-catalog';
-import { Vault, type Doc } from '../../qa/vault';
+import type { CodeFile, CodeIndex } from '@codesearch/index';
+import type { TestRecord } from '@qa/tests-catalog';
+import { Vault, type Doc } from '@qa/vault';
 
 export function doc(id: string, type: string, meta: Record<string, unknown> = {}): Doc {
   return { id, type, title: `${id} title`, path: `knowledge/${type}s/${id}.md`, meta: { id, type, ...meta } };

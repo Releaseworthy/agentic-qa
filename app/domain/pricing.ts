@@ -1,6 +1,6 @@
-import { defect } from '../defects';
-import type { Coupon } from '../store';
-import { discountFor } from './coupons';
+import { defect } from '@app/defects';
+import type { Coupon } from '@app/store';
+import { discountFor } from '@app/domain/coupons';
 
 /** BR-SHIP-01: orders of $50.00 or more (after discount) ship free; below that, $4.99. */
 export const FREE_SHIPPING_FROM_CENTS = 5000;

@@ -12,7 +12,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { rgPath } from '@vscode/ripgrep';
-import { codeIndex, related, ROOT, SCOPE, type CodeIndex, type CodeSymbol } from './index';
+import { codeIndex, related, ROOT, SCOPE, type CodeIndex, type CodeSymbol } from '@codesearch/index';
 
 export type LineHit = { file: string; line: number; text: string };
 

@@ -1,5 +1,5 @@
-import { addItem, applyCoupon, removeCoupon, removeItem, updateItem, viewCart } from '../domain/cart';
-import { authUser, body, int, json, str, type Route } from '../http';
+import { addItem, applyCoupon, removeCoupon, removeItem, updateItem, viewCart } from '@app/domain/cart';
+import { authUser, body, int, json, str, type Route } from '@app/http';
 
 export const cartRoutes: Route[] = [
   { method: 'GET', pattern: '/api/cart', handler: (req) => json(viewCart(authUser(req).id)) },

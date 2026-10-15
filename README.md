@@ -55,14 +55,23 @@ flowchart LR
 Prerequisites: [Bun](https://bun.sh) 1.4+ and [uv](https://docs.astral.sh/uv/). Everything else installs into the repo.
 
 ```powershell
+$env:STRING_HEX_SHOPLITE = 'b4a8856ed96c7f3dbf79c4cd155bb59f59877615922a041842d5a321009898aa'
 bun run setup            # packages, browsers, Python env, RAG index
-bun run test             # API + Chromium: 108 tests, starts ShopLite itself
+bun run test             # API + Chromium on dev: 112 tests, starts ShopLite itself
 bun run app              # ShopLite on http://localhost:3100 (SHOPLITE_DEFECTS=all for the buggy build)
 ```
+
+On bash: `export STRING_HEX_SHOPLITE=b4a8856ed96c7f3dbf79c4cd155bb59f59877615922a041842d5a321009898aa`.
+
+> **About `STRING_HEX_SHOPLITE`:** the saved test accounts in `env/` are committed only as `enc1.…` tokens
+> (AES-256-GCM, key derived per token by HKDF-SHA256). This key decrypts them. It is published here because the
+> accounts belong to a demo shop that runs on your machine; a real project keeps it in a secret store — CI reads it
+> from the `STRING_HEX_SHOPLITE` repository secret.
 
 | Command                                               | Does                                                            |
 | ----------------------------------------------------- | --------------------------------------------------------------- |
 | `bun run test:all` / `test:smoke` / `test:unit`       | All browsers / critical path / QA-engine unit tests             |
+| `bun run test:staging` / `test:live`                  | The suite against staging / the `@readonly` tests against live  |
 | `bun run qa:impact [--base <ref> \| --files <paths>]` | Change → impacted features, risk, the `--grep` to run           |
 | `bun run qa:trace`                                    | Feature/rule ↔ tests ↔ manual cases ↔ defects                   |
 | `bun run qa:gate`                                     | Go/No-Go from `out/results.json`                                |
@@ -70,6 +79,7 @@ bun run app              # ShopLite on http://localhost:3100 (SHOPLITE_DEFECTS=a
 | `bun run rag:build` / `rag:eval` / `rag:serve`        | Index the vault / evaluate retrieval / MCP over HTTP            |
 | `bun run codesearch "apply coupon"`                   | Hybrid code search (also `--symbol`, `--related`, `--helpers`)  |
 | `bun run seed:session --name s1 --cart 2`             | Seed data over the API + a signed-in state for `playwright-cli` |
+| `'secret' \| bun run crypto encrypt`                  | An `enc1.…` token for `env/` (`keygen`, `decrypt` too)          |
 | `bun run agent <workflow> [args]`                     | Run a workflow headless (`bun run agent list`)                  |
 
 Agents need Claude credentials: a Claude Code login locally, or `ANTHROPIC_API_KEY` / `CLAUDE_CODE_OAUTH_TOKEN`
@@ -171,26 +181,61 @@ The agents call these engines instead of deciding by feel. All of them are unit-
 ### Playwright framework
 
 - **Setup over the API, assert at the surface.** `seed.product({ priceCents, stock })`, `seed.cart`, `seed.order` and
-  `seed.shipped` create data each test owns, so all 108 tests run fully parallel.
-- **Validated contracts.** ArkType schemas check every response. `expectRefused(call, status, code)` asserts the error
+  `seed.shipped` create data each test owns, so all 112 tests run fully parallel.
+- **Validated contracts.** Zod schemas check every response. `expectRefused(call, status, code)` asserts the error
   contract.
 - **Page objects wait for the request behind an action,** never for time. Locators are role and label based.
+- **Readable reports.** Page-object and seed methods carry `@step('Place the order')`, and every API call shows as
+  `POST /api/orders`, so a trace reads as business actions. Non-obvious assertions say what they check:
+  `expect(orderPage.cancelButton, '"Cancel order" is not offered for a shipped order').toBeHidden()`.
+- **One way to do things, enforced by ESLint.** Imports only through tsconfig aliases (`@api`, `@pages/*`, `@app/*`, …).
+  Dates only through `@utils/date` (date-fns), so test cards expire relative to today and never go stale.
+
+#### Environments and accounts
+
+`TEST_ENV` picks `env/.env.<name>`. Real env vars and a gitignored `.local` file override it.
+
+| `TEST_ENV`      | ShopLite                                 | What runs                                       |
+| --------------- | ---------------------------------------- | ----------------------------------------------- |
+| `dev` (default) | :3100, test hooks on (seeded defects)    | everything                                      |
+| `staging`       | :3200, no test hooks, its own accounts   | everything (CI: `@smoke`)                       |
+| `live`          | :3300, no test hooks, no admin for tests | `@readonly` only; seeding or registering throws |
+
+Each env file can start a local stand-in for its deployment (`START_APP`). It hands the decrypted accounts to the
+app the way a deployment injects secrets. Point `BASE_URL` at a real deployment and set `START_APP=false` to test
+that one instead. Global setup checks `/health`, so a staging config never runs against live.
+
+Tests pick who they are with `test.use({ account })`:
+
+- **`GUEST`** — the default.
+- **`NEW_CUSTOMER`** — registered per test, for anything that changes per-user state.
+- **`RETURNING_CUSTOMER`** — saved, with order history, read-only.
+- **`ADMIN`** — saved; the seed acts as this account.
+
+Global setup signs in the saved accounts over the API and stores their storage states in
+`.auth/<env>/<account>.json`. Each state is reused until 5 minutes before the expiry the API returned, and re-verified
+on every run. The browser starts signed in from that state and never goes through the login form, which has tests of
+its own.
+
 - **Tags drive everything.** `@FEAT-…`, `@BR-…` and `@DEF-…` feed traceability, impact selection and the gate.
   Known bugs run as `test.fail()` (DEF-001).
 
 ### CI/CD
 
-| Pipeline                                       | Runs                                                                                                                                                                                                                                                                     |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| [QA pipeline](.github/workflows/ci.yml)        | Lint, types, format and unit tests · RAG build + eval (local graph and Neo4j service) · impact selection on PRs · API, Chromium ×2 shards, Firefox and WebKit in the Playwright image · seeded-defect detection · merged report → traceability → Go/No-Go → GitHub Pages |
-| [Agentic QA](.github/workflows/agentic-qa.yml) | On demand, any workflow. On a PR labelled `agentic-qa`: a test plan, then regression, with the summary posted on the PR. Workflows that write open a PR with the result.                                                                                                 |
-| [azure-pipelines.yml](azure-pipelines.yml)     | The same on Azure DevOps: parallel regression published to Test Runs, the gate, and the Agent SDK regression stage                                                                                                                                                       |
+| Pipeline                                       | Runs                                                                                                                                                                                                                                                                                                        |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [QA pipeline](.github/workflows/ci.yml)        | Lint, types, format and unit tests · RAG build + eval (local graph and Neo4j service) · impact selection on PRs · API, Chromium ×2 shards, Firefox and WebKit in the Playwright image · staging smoke and live read-only · seeded-defect detection · merged report → traceability → Go/No-Go → GitHub Pages |
+| [Agentic QA](.github/workflows/agentic-qa.yml) | On demand, any workflow. On a PR labelled `agentic-qa`: a test plan, then regression, with the summary posted on the PR. Workflows that write open a PR with the result.                                                                                                                                    |
+| [azure-pipelines.yml](azure-pipelines.yml)     | The same on Azure DevOps: parallel regression published to Test Runs, the gate, and the Agent SDK regression stage                                                                                                                                                                                          |
 
 ## Project structure
 
 ```
 ├─ app/                 ShopLite: REST API (domain/, routes/), SPA (web/), seeded defects (defects.ts)
-├─ framework/           API helpers + ArkType schemas, seed (test data), page objects, fixtures, seed:session CLI
+├─ env/                 .env.dev · .env.staging · .env.live — per-environment settings, encrypted accounts
+├─ framework/           api/ (helpers + zod schemas) · auth/ (accounts, storage states) · config/ (env, paths,
+│                       timeouts) · data/ · pages/ · setup/ (seed, app launcher, seed:session CLI) ·
+│                       utils/ (date, step, crypto) · fixtures
 ├─ tests/               api/endpoints · api/journeys · ui · unit (QA engines)
 ├─ knowledge/           vault: product, features, rules, cards, defects, test-cases, learnings
 ├─ rag/                 Hybrid RAG (Python/uv): vault loader, ChromaDB, graph (local/Neo4j), fusion, MCP server, eval, Dockerfile
@@ -199,7 +244,7 @@ The agents call these engines instead of deciding by feel. All of them are unit-
 ├─ agents/              Claude Agent SDK runner and workflow registry
 ├─ .claude/             skills/ (9 workflows) · agents/ (6 subagents) · rules/ · settings.json
 ├─ docs/examples/       outputs of real runs
-├─ scripts/             GitHub Pages landing page
+├─ scripts/             crypto CLI (encrypt / decrypt / keygen), GitHub Pages landing page
 ├─ .github/             CI workflows, setup action
 ├─ azure-pipelines.yml  Azure DevOps pipeline
 ├─ docker-compose.yml   knowledge MCP + Neo4j
@@ -208,7 +253,8 @@ The agents call these engines instead of deciding by feel. All of them are unit-
 └─ playwright.config.ts projects api · chromium · firefox · webkit; starts ShopLite
 ```
 
-Generated and gitignored: `out/` (reports, plans, agent runs), `.rag/` (index), Playwright output.
+Generated and gitignored: `out/` (reports, plans, agent runs), `.auth/` (storage states), `.rag/` (index),
+Playwright output.
 
 ## License
 

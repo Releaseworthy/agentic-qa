@@ -20,42 +20,61 @@ test.describe(
 
         const registration = newRegistration();
 
-        const me = await test.step('register', async () => {
+        const me = await test.step('Register', async () => {
           const { token, user } = await api.auth.register(registration);
-          expect(user.role).toBe('customer');
+          expect(user.role, 'registered as a customer').toBe('customer');
           return api.as({ token });
         });
 
-        await test.step('find both products in the catalog', async () => {
+        await test.step('Find both products in the catalog', async () => {
           const books = await api.products.list({ category: 'books', q: book.name });
-          expect(books.items.map((p) => p.id)).toEqual([book.id]);
-          expect((await api.products.get(mug.id)).stock).toBe(20);
+          expect(
+            books.items.map((p) => p.id),
+            'searching books by name finds the book',
+          ).toEqual([book.id]);
+          expect((await api.products.get(mug.id)).stock, 'the mug is in stock').toBe(20);
         });
 
-        const cart = await test.step('fill the cart and apply WELCOME10', async () => {
+        const cart = await test.step('Fill the cart and apply WELCOME10', async () => {
           await me.cart.add(book.id, 1);
           await me.cart.add(mug.id, 2);
-          return me.cart.applyCoupon('WELCOME10');
+          const priced = await me.cart.applyCoupon('WELCOME10');
+          // $32.00 + 2 × $12.00 = $56.00 · 10% off = $50.40 · free shipping.
+          expect(priced, 'cart totals with WELCOME10').toMatchObject({
+            subtotalCents: 5600,
+            discountCents: 560,
+            shippingCents: 0,
+            totalCents: 5040,
+          });
+          return priced;
         });
 
-        // $32.00 + 2 × $12.00 = $56.00 · 10% off = $50.40 · free shipping.
-        expect(cart).toMatchObject({ subtotalCents: 5600, discountCents: 560, shippingCents: 0, totalCents: 5040 });
-
-        const order = await test.step('check out', () =>
-          me.orders.place({ shippingAddress: newAddress(), payment: Cards.VALID }));
-
-        expect(order).toMatchObject({ status: 'placed', totalCents: cart.totalCents, couponCode: 'WELCOME10' });
-
-        await test.step('the order is in the history and the stock moved', async () => {
-          expect((await me.orders.list()).map((o) => o.id)).toEqual([order.id]);
-          expect((await api.products.get(book.id)).stock).toBe(19);
-          expect((await api.products.get(mug.id)).stock).toBe(18);
-          expect((await me.cart.get()).items).toEqual([]);
+        const order = await test.step('Check out', async () => {
+          const placed = await me.orders.place({ shippingAddress: newAddress(), payment: Cards.VALID });
+          expect(placed, 'the order charges what the cart showed').toMatchObject({
+            status: 'placed',
+            totalCents: cart.totalCents,
+            couponCode: 'WELCOME10',
+          });
+          return placed;
         });
 
-        await test.step('the session survives a fresh login', async () => {
+        await test.step('The order is in the history and the stock moved', async () => {
+          expect(
+            (await me.orders.list()).map((o) => o.id),
+            'history holds exactly the new order',
+          ).toEqual([order.id]);
+          expect((await api.products.get(book.id)).stock, 'book stock: 20 − 1').toBe(19);
+          expect((await api.products.get(mug.id)).stock, 'mug stock: 20 − 2').toBe(18);
+          expect((await me.cart.get()).items, 'cart emptied by checkout').toEqual([]);
+        });
+
+        await test.step('The history survives a fresh login', async () => {
           const again = await api.auth.login({ email: registration.email, password: registration.password });
-          expect((await api.as(again).orders.list()).map((o) => o.id)).toEqual([order.id]);
+          expect(
+            (await api.as(again).orders.list()).map((o) => o.id),
+            'a new session sees the same history',
+          ).toEqual([order.id]);
         });
       },
     );
@@ -72,13 +91,18 @@ test.describe(
       await seed.cart(alice, [{ product, quantity: 3 }]);
       await seed.cart(bob, [{ product, quantity: 1 }]);
 
-      await api.as(alice).orders.place({ shippingAddress: newAddress(), payment: Cards.VALID });
-      const { status, body } = await api
-        .as(bob)
-        .raw('POST', '/api/orders', { shippingAddress: newAddress(), payment: Cards.VALID });
-      expect(status).toBe(409);
-      expect(body).toMatchObject({ error: { code: 'OUT_OF_STOCK' } });
-      expect((await api.products.get(product.id)).stock).toBe(0);
+      await test.step('Alice checks out first and takes all 3 units', () =>
+        api.as(alice).orders.place({ shippingAddress: newAddress(), payment: Cards.VALID }));
+
+      await test.step('Bob is refused at checkout', async () => {
+        const { status, body } = await api
+          .as(bob)
+          .raw('POST', '/api/orders', { shippingAddress: newAddress(), payment: Cards.VALID });
+        expect(status, 'HTTP status for checking out a sold-out product').toBe(409);
+        expect(body, 'error code').toMatchObject({ error: { code: 'OUT_OF_STOCK' } });
+      });
+
+      expect((await api.products.get(product.id)).stock, 'stock stays at 0: nothing oversold').toBe(0);
     });
   },
 );
