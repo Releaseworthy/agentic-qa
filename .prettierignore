@@ -10,3 +10,5 @@ bun.lock
 uv.lock
 knowledge/
 .claude/
+# verbatim outputs of real runs
+docs/examples/

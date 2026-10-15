@@ -6,10 +6,11 @@ import { config } from './config';
  * change this run's results.
  */
 export default async function globalSetup(): Promise<void> {
+  const list = process.env.SHOPLITE_DEFECTS ?? '';
   const res = await fetch(`${config.baseUrl}/api/test/defects`, {
     method: 'PUT',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ enabled: process.env.SHOPLITE_DEFECTS || 'none' }),
+    body: JSON.stringify({ enabled: list.trim() === '' ? 'none' : list }),
   });
   // 404: a deployed build without test hooks — it has no seeded defects to pin.
   if (!res.ok && res.status !== 404) throw new Error(`could not set seeded defects: ${res.status} ${await res.text()}`);

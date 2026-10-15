@@ -8,7 +8,7 @@
   bunx playwright-cli -s=<session> goto http://localhost:3100/#/<route>
   ```
   Routes: `#/`, `#/product/<id>`, `#/cart`, `#/checkout`, `#/orders`, `#/orders/<id>`, `#/login`, `#/register`.
-- **Snapshot before acting**, act by ref, re-snapshot after. `find "<text>"` to locate text cheaply. Read-only before mutating.
+- **Snapshot before acting**, act by ref, re-snapshot after. `find "<text>"` to locate text cheaply instead of piping a snapshot through grep. Read-only before mutating. One playwright-cli command per call.
 - **Watch the network around every action:** `requests` after it; `response-body <n>` for the API's answer. The request that proves the action landed is what a page object must wait for.
 - **Record exactly:** labels and messages verbatim (typos included), the observed result of every step, the request/response that backs it.
 - **Locators for page objects:** `generate-locator <ref>` — prefer the role/label form it suggests.

@@ -55,7 +55,13 @@ async function runAgainst(defect: DefectId, port: number, project: string): Prom
       ['--bun', 'playwright', 'test', `--project=${project}`, '--reporter=json', '--retries=0'],
       {
         cwd: ROOT,
-        env: { ...process.env, BASE_URL: `http://localhost:${port}`, PLAYWRIGHT_JSON_OUTPUT_FILE: out, SHOPLITE_DEFECTS: defect, CI: '' },
+        env: {
+          ...process.env,
+          BASE_URL: `http://localhost:${port}`,
+          PLAYWRIGHT_JSON_OUTPUT_FILE: out,
+          SHOPLITE_DEFECTS: defect,
+          CI: '',
+        },
         stdio: ['ignore', 'ignore', 'inherit'],
       },
     );

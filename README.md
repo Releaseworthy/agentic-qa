@@ -19,17 +19,17 @@ ChromaDB + Neo4j (Hybrid RAG, Python/uv) · LangSmith · ripgrep · GitHub Actio
 
 ## What it does
 
-| QA activity | Workflow (`/skill` in Claude Code, `bun run agent <name>` headless) | Backed by |
-| --- | --- | --- |
-| Risk-based test planning | `qa-plan` — impacted areas ranked by risk, coverage, exit criteria | `qa/impact.ts`, vault, code graph |
-| AC refinement | `refine-ac CARD-142` — ambiguities, rule conflicts, Given/When/Then, questions for Product | knowledge MCP · [example](docs/examples/refine-ac-CARD-142.md) |
-| Endpoint API tests | `api-testgen "PATCH /api/cart/items/:productId"` — positive + negative per endpoint | API helpers, `seed`, rule boundaries |
-| API journey tests | `api-journey-testgen "two customers race for the last units"` — chained calls, final business state | `tests/api/journeys/` |
-| Post-dev UI QA | `ui-qa FEAT-CART` — explore in parallel sessions, defects, manual cases, then Playwright specs | `playwright-cli`, page objects |
-| Ad hoc testing | `adhoc-test "<charter>" [--defects]` — unscripted, evidence, minimal repro | `seed:session`, `playwright-cli` |
-| Impact-based regression | `regression --base origin/main` — select, run, triage flaky / test defect / product bug | `qa/impact.ts` · [example](docs/examples/impact-pricing-change.md) |
-| Go/No-Go | `release-gate` — blockers, residual risks, sign-off | `qa/release-gate.ts` · [example](docs/examples/release-gate.md) |
-| Learning loop | `learn <PR#>` — review comments become vault learnings future runs follow | `add_learning` |
+| QA activity              | Workflow (`/skill` in Claude Code, `bun run agent <name>` headless)                                 | Backed by                                                          |
+| ------------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Risk-based test planning | `qa-plan` — impacted areas ranked by risk, coverage, exit criteria                                  | `qa/impact.ts`, vault, code graph                                  |
+| AC refinement            | `refine-ac CARD-142` — ambiguities, rule conflicts, Given/When/Then, questions for Product          | knowledge MCP · [example](docs/examples/refine-ac-CARD-142.md)     |
+| Endpoint API tests       | `api-testgen "PATCH /api/cart/items/:productId"` — positive + negative per endpoint                 | API helpers, `seed`, rule boundaries                               |
+| API journey tests        | `api-journey-testgen "two customers race for the last units"` — chained calls, final business state | `tests/api/journeys/`                                              |
+| Post-dev UI QA           | `ui-qa FEAT-CART` — explore in parallel sessions, defects, manual cases, then Playwright specs      | `playwright-cli`, page objects                                     |
+| Ad hoc testing           | `adhoc-test "<charter>" [--defects]` — unscripted, evidence, minimal repro                          | `seed:session`, `playwright-cli`                                   |
+| Impact-based regression  | `regression --base origin/main` — select, run, triage flaky / test defect / product bug             | `qa/impact.ts` · [example](docs/examples/impact-pricing-change.md) |
+| Go/No-Go                 | `release-gate` — blockers, residual risks, sign-off                                                 | `qa/release-gate.ts` · [example](docs/examples/release-gate.md)    |
+| Learning loop            | `learn <PR#>` — review comments become vault learnings future runs follow                           | `add_learning`                                                     |
 
 ```mermaid
 flowchart LR
@@ -60,17 +60,17 @@ bun run test             # API + Chromium: 108 tests, starts ShopLite itself
 bun run app              # ShopLite on http://localhost:3100 (SHOPLITE_DEFECTS=all for the buggy build)
 ```
 
-| Command | Does |
-| --- | --- |
-| `bun run test:all` / `test:smoke` / `test:unit` | All browsers / critical path / QA-engine unit tests |
-| `bun run qa:impact [--base <ref> \| --files <paths>]` | Change → impacted features, risk, the `--grep` to run |
-| `bun run qa:trace` | Feature/rule ↔ tests ↔ manual cases ↔ defects |
-| `bun run qa:gate` | Go/No-Go from `out/results.json` |
-| `bun run qa:defects` | Runs the suite once per seeded defect; fails if one survives |
-| `bun run rag:build` / `rag:eval` / `rag:serve` | Index the vault / evaluate retrieval / MCP over HTTP |
-| `bun run codesearch "apply coupon"` | Hybrid code search (also `--symbol`, `--related`, `--helpers`) |
-| `bun run seed:session --name s1 --cart 2` | Seed data over the API + a signed-in state for `playwright-cli` |
-| `bun run agent <workflow> [args]` | Run a workflow headless (`bun run agent list`) |
+| Command                                               | Does                                                            |
+| ----------------------------------------------------- | --------------------------------------------------------------- |
+| `bun run test:all` / `test:smoke` / `test:unit`       | All browsers / critical path / QA-engine unit tests             |
+| `bun run qa:impact [--base <ref> \| --files <paths>]` | Change → impacted features, risk, the `--grep` to run           |
+| `bun run qa:trace`                                    | Feature/rule ↔ tests ↔ manual cases ↔ defects                   |
+| `bun run qa:gate`                                     | Go/No-Go from `out/results.json`                                |
+| `bun run qa:defects`                                  | Runs the suite once per seeded defect; fails if one survives    |
+| `bun run rag:build` / `rag:eval` / `rag:serve`        | Index the vault / evaluate retrieval / MCP over HTTP            |
+| `bun run codesearch "apply coupon"`                   | Hybrid code search (also `--symbol`, `--related`, `--helpers`)  |
+| `bun run seed:session --name s1 --cart 2`             | Seed data over the API + a signed-in state for `playwright-cli` |
+| `bun run agent <workflow> [args]`                     | Run a workflow headless (`bun run agent list`)                  |
 
 Agents need Claude credentials: a Claude Code login locally, or `ANTHROPIC_API_KEY` / `CLAUDE_CODE_OAUTH_TOKEN`
 in CI. Interactively, open the repo in Claude Code and type `/refine-ac CARD-142`.
@@ -82,14 +82,14 @@ in CI. Interactively, open the repo in Claude Code and type `/refine-ac CARD-142
 Each workflow is a **skill** (`.claude/skills/*/SKILL.md`). The skill coordinates and hands the work to **subagents**
 (`.claude/agents/*.md`). Each subagent has its own context window and only the tools it needs:
 
-| Subagent | Model | Does |
-| --- | --- | --- |
-| `knowledge-scout` | haiku | Business facts with document ids, from the knowledge MCP |
-| `code-scout` | haiku | Existing helpers, page objects and fixtures to reuse |
-| `ui-explorer` | haiku | Drives its own headless `playwright-cli` session, records labels, network calls, evidence |
-| `test-author` | opus | Writes specs and page objects, validates with a focused run, typecheck and lint |
-| `test-reviewer` | opus | Read-only verdict, PASS / NEEDS_REVISION, at most 2 revision rounds |
-| `qa-writer` | sonnet | Manual test cases and defect reports, written into the vault |
+| Subagent          | Model  | Does                                                                                      |
+| ----------------- | ------ | ----------------------------------------------------------------------------------------- |
+| `knowledge-scout` | haiku  | Business facts with document ids, from the knowledge MCP                                  |
+| `code-scout`      | haiku  | Existing helpers, page objects and fixtures to reuse                                      |
+| `ui-explorer`     | haiku  | Drives its own headless `playwright-cli` session, records labels, network calls, evidence |
+| `test-author`     | opus   | Writes specs and page objects, validates with a focused run, typecheck and lint           |
+| `test-reviewer`   | opus   | Read-only verdict, PASS / NEEDS_REVISION, at most 2 revision rounds                       |
+| `qa-writer`       | sonnet | Manual test cases and defect reports, written into the vault                              |
 
 Lookups and browser exploration run on the light model. Orchestration, authoring and review run on the strongest.
 Independent explorers run in parallel, each with its own seeded data and browser session. Project rules live in
@@ -116,10 +116,10 @@ On a 22-question golden set (`rag/golden.yaml`), `bun run rag:eval` compares the
 regresses. With `LANGSMITH_API_KEY` set, the run is logged to **LangSmith** as an experiment, and `--answers` adds
 answer quality: Claude answers from the retrieved context only, and an LLM judge scores faithfulness.
 
-| Mode | hit@1 | hit@5 | MRR |
-| --- | --- | --- | --- |
-| vector | 0.591 | 1.0 | 0.769 |
-| graph | 0.455 | 0.727 | 0.577 |
+| Mode       | hit@1     | hit@5   | MRR       |
+| ---------- | --------- | ------- | --------- |
+| vector     | 0.591     | 1.0     | 0.769     |
+| graph      | 0.455     | 0.727   | 0.577     |
 | **hybrid** | **0.727** | **1.0** | **0.845** |
 
 The **knowledge MCP server** (`rag/server.py`) exposes `search_knowledge`, `get_document`, `related`,
@@ -174,11 +174,11 @@ The agents call these engines instead of deciding by feel. All of them are unit-
 
 ### CI/CD
 
-| Pipeline | Runs |
-| --- | --- |
-| [QA pipeline](.github/workflows/ci.yml) | Lint, types, format and unit tests · RAG build + eval (local graph and Neo4j service) · impact selection on PRs · API, Chromium ×2 shards, Firefox and WebKit in the Playwright image · seeded-defect detection · merged report → traceability → Go/No-Go → GitHub Pages |
-| [Agentic QA](.github/workflows/agentic-qa.yml) | On demand, any workflow. On a PR labelled `agentic-qa`: a test plan, then regression, with the summary posted on the PR. Workflows that write open a PR with the result. |
-| [azure-pipelines.yml](azure-pipelines.yml) | The same on Azure DevOps: parallel regression published to Test Runs, the gate, and the Agent SDK regression stage |
+| Pipeline                                       | Runs                                                                                                                                                                                                                                                                     |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [QA pipeline](.github/workflows/ci.yml)        | Lint, types, format and unit tests · RAG build + eval (local graph and Neo4j service) · impact selection on PRs · API, Chromium ×2 shards, Firefox and WebKit in the Playwright image · seeded-defect detection · merged report → traceability → Go/No-Go → GitHub Pages |
+| [Agentic QA](.github/workflows/agentic-qa.yml) | On demand, any workflow. On a PR labelled `agentic-qa`: a test plan, then regression, with the summary posted on the PR. Workflows that write open a PR with the result.                                                                                                 |
+| [azure-pipelines.yml](azure-pipelines.yml)     | The same on Azure DevOps: parallel regression published to Test Runs, the gate, and the Agent SDK regression stage                                                                                                                                                       |
 
 ## Project structure
 

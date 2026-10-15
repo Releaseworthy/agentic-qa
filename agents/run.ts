@@ -53,10 +53,25 @@ const ALLOWED_TOOLS = [
   'Bash(git log *)',
   'Bash(gh pr view *)',
   'Bash(gh api *)',
+  // Read-only helpers agents chain onto the commands above (pipes are checked per command).
+  'Bash(cd *)',
+  'Bash(grep *)',
+  'Bash(tail *)',
+  'Bash(head *)',
+  'Bash(cat *)',
+  'Bash(ls *)',
+  'Bash(wc *)',
+  'Bash(echo *)',
+  'Bash(sort *)',
 ];
 
 // The runner's own flags; every other argument (positional or `--flag`) belongs to the workflow.
-const RUNNER_FLAGS = { '--budget': 'string', '--model': 'string', '--max-turns': 'string', '--strict': 'boolean' } as const;
+const RUNNER_FLAGS = {
+  '--budget': 'string',
+  '--model': 'string',
+  '--max-turns': 'string',
+  '--strict': 'boolean',
+} as const;
 const runnerArgs: string[] = [];
 const workflowArgs: string[] = [];
 const argv = Bun.argv.slice(2);
