@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { codeIndex, related } from '../../codesearch/index';
-import { findSymbol, listHelpers, search, terms } from '../../codesearch/search';
+import { codeIndex, related } from '@codesearch/index';
+import { findSymbol, listHelpers, search, terms } from '@codesearch/search';
 
 describe('terms', () => {
   it('splits camelCase and drops stop words and short words', () => {

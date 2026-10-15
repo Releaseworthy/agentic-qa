@@ -1,5 +1,5 @@
-import { getProduct, listProducts } from '../domain/catalog';
-import { json, type Route } from '../http';
+import { getProduct, listProducts } from '@app/domain/catalog';
+import { json, type Route } from '@app/http';
 
 export const productRoutes: Route[] = [
   {

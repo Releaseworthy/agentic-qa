@@ -5,19 +5,26 @@ test.describe('POST /api/cart/coupon', { tag: '@FEAT-COUPON' }, () => {
     const product = await seed.product({ priceCents: 4000 });
     await seed.cart(customer, [{ product }]);
     const cart = await api.as(customer).cart.applyCoupon('WELCOME10');
-    expect(cart).toMatchObject({ couponCode: 'WELCOME10', subtotalCents: 4000, discountCents: 400 });
+    expect(cart, 'WELCOME10 takes 10% off $40.00').toMatchObject({
+      couponCode: 'WELCOME10',
+      subtotalCents: 4000,
+      discountCents: 400,
+    });
   });
 
   test('a fixed coupon takes its amount off', async ({ api, seed, customer }) => {
     const product = await seed.product({ priceCents: 3000 });
     await seed.cart(customer, [{ product }]);
-    expect((await api.as(customer).cart.applyCoupon('SAVE5')).discountCents).toBe(500);
+    expect((await api.as(customer).cart.applyCoupon('SAVE5')).discountCents, 'SAVE5 takes $5.00 off').toBe(500);
   });
 
   test('codes are case-insensitive', async ({ api, seed, customer }) => {
     const product = await seed.product({ priceCents: 4000 });
     await seed.cart(customer, [{ product }]);
-    expect((await api.as(customer).cart.applyCoupon('welcome10')).couponCode).toBe('WELCOME10');
+    expect(
+      (await api.as(customer).cart.applyCoupon('welcome10')).couponCode,
+      'applied under its canonical upper-case code',
+    ).toBe('WELCOME10');
   });
 
   test('refuses an unknown code', async ({ api, seed, customer }) => {
@@ -37,7 +44,10 @@ test.describe('POST /api/cart/coupon', { tag: '@FEAT-COUPON' }, () => {
 
   test('accepts a subtotal exactly at the minimum', { tag: '@BR-COUP-02' }, async ({ api, seed, customer }) => {
     await seed.cart(customer, [{ product: await seed.product({ priceCents: 2000 }) }]);
-    expect((await api.as(customer).cart.applyCoupon('WELCOME10')).discountCents).toBe(200);
+    expect(
+      (await api.as(customer).cart.applyCoupon('WELCOME10')).discountCents,
+      'WELCOME10 applies at its $20.00 minimum',
+    ).toBe(200);
   });
 
   test('a second coupon replaces the first', { tag: '@BR-COUP-01' }, async ({ api, seed, customer }) => {
@@ -45,18 +55,23 @@ test.describe('POST /api/cart/coupon', { tag: '@FEAT-COUPON' }, () => {
     const me = api.as(customer).cart;
     await me.applyCoupon('WELCOME10');
     const cart = await me.applyCoupon('SAVE5');
-    expect(cart).toMatchObject({ couponCode: 'SAVE5', discountCents: 500 });
+    expect(cart, 'only SAVE5 counts, not both').toMatchObject({ couponCode: 'SAVE5', discountCents: 500 });
   });
 
   test('a percent coupon never exceeds its cap', { tag: '@BR-COUP-04' }, async ({ api, seed, customer }) => {
     const coupon = await seed.coupon({ kind: 'percent', value: 50, maxDiscountCents: 1000 });
     await seed.cart(customer, [{ product: await seed.product({ priceCents: 6000 }) }]);
-    expect((await api.as(customer).cart.applyCoupon(coupon.code)).discountCents).toBe(1000);
+    expect((await api.as(customer).cart.applyCoupon(coupon.code)).discountCents, '50% of $60.00 capped at $10.00').toBe(
+      1000,
+    );
   });
 
   test('BIGSPENDER is capped at $30', { tag: '@BR-COUP-04' }, async ({ api, seed, customer }) => {
     await seed.cart(customer, [{ product: await seed.product({ priceCents: 10000 }), quantity: 3 }]);
-    expect((await api.as(customer).cart.applyCoupon('BIGSPENDER')).discountCents).toBe(3000);
+    expect(
+      (await api.as(customer).cart.applyCoupon('BIGSPENDER')).discountCents,
+      '15% of $300.00 capped at $30.00',
+    ).toBe(3000);
   });
 
   test(
@@ -66,7 +81,10 @@ test.describe('POST /api/cart/coupon', { tag: '@FEAT-COUPON' }, () => {
       const coupon = await seed.coupon({ kind: 'fixed', value: 5000 });
       await seed.cart(customer, [{ product: await seed.product({ priceCents: 1200 }) }]);
       const cart = await api.as(customer).cart.applyCoupon(coupon.code);
-      expect(cart).toMatchObject({ discountCents: 1200, subtotalCents: 1200 });
+      expect(cart, '$50.00 off a $12.00 cart takes only $12.00').toMatchObject({
+        discountCents: 1200,
+        subtotalCents: 1200,
+      });
     },
   );
 });
@@ -79,12 +97,18 @@ test.describe('Coupon upkeep', { tag: '@FEAT-COUPON' }, () => {
       const product = await seed.product({ priceCents: 1500 });
       await seed.cart(customer, [{ product, quantity: 2 }], 'WELCOME10');
       const cart = await api.as(customer).cart.update(product.id, 1);
-      expect(cart).toMatchObject({ couponCode: null, discountCents: 0 });
+      expect(cart, 'coupon removed at $15.00, below its $20.00 minimum').toMatchObject({
+        couponCode: null,
+        discountCents: 0,
+      });
     },
   );
 
   test('DELETE /api/cart/coupon removes it', async ({ api, seed, customer }) => {
     await seed.cart(customer, [{ product: await seed.product({ priceCents: 4000 }) }], 'WELCOME10');
-    expect(await api.as(customer).cart.removeCoupon()).toMatchObject({ couponCode: null, discountCents: 0 });
+    expect(await api.as(customer).cart.removeCoupon(), 'no coupon, no discount').toMatchObject({
+      couponCode: null,
+      discountCents: 0,
+    });
   });
 });

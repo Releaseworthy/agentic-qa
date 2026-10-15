@@ -26,7 +26,8 @@ import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { query, type Options, type SDKMessage, type SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
-import { RESULT_SCHEMA, WORKFLOWS, type WorkflowName, type WorkflowResult } from './workflows';
+import { RESULT_SCHEMA, WORKFLOWS, type WorkflowName, type WorkflowResult } from '@agents/workflows';
+import { DateFormat, formatDate, now } from '@utils/date';
 
 const ROOT = join(import.meta.dir, '..');
 
@@ -101,7 +102,7 @@ if (!name || name === 'list' || !(name in WORKFLOWS)) {
 }
 
 const workflow = WORKFLOWS[name as WorkflowName];
-const runId = `${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}-${name}`;
+const runId = `${formatDate(now(), DateFormat.RUN_ID)}-${name}`;
 const dir = join(ROOT, 'out', 'agent-runs', runId);
 mkdirSync(dir, { recursive: true });
 const transcript = join(dir, 'transcript.jsonl');

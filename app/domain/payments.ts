@@ -1,4 +1,4 @@
-import { HttpError } from '../http';
+import { HttpError } from '@app/http';
 
 /** Test card numbers the mock gateway declines. */
 export const DECLINED_CARDS = new Set(['4000000000000002']);

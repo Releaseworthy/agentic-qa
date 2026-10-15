@@ -62,9 +62,25 @@ export type Order = {
 
 export type Session = { token: string; userId: string; expiresAt: number };
 
-export const ADMIN_EMAIL = 'admin@shoplite.test';
-/** Demo-only password of the local system under test; override with SHOPLITE_ADMIN_PASSWORD. */
-export const ADMIN_PASSWORD = process.env.SHOPLITE_ADMIN_PASSWORD ?? 'admin-demo-pass1';
+/** Which deployment this is: dev, staging or live. Reported by /health and shown in the UI outside live. */
+export const ENVIRONMENT = process.env.SHOPLITE_ENV ?? 'dev';
+
+type SeedAccount = { email: string; password: string };
+
+/**
+ * The accounts every start seeds, with credentials from the deployment's
+ * environment (framework/setup/app-server.ts passes them in). A missing password
+ * becomes a random one nobody knows: the account exists but cannot sign in.
+ */
+function seedAccount(name: 'ADMIN' | 'CUSTOMER', defaultEmail: string): SeedAccount {
+  return {
+    email: process.env[`SHOPLITE_${name}_EMAIL`] ?? defaultEmail,
+    password: process.env[`SHOPLITE_${name}_PASSWORD`] ?? crypto.randomUUID(),
+  };
+}
+const ADMIN = seedAccount('ADMIN', 'admin@shoplite.test');
+/** A customer with order history — what a returning shopper sees. */
+const RETURNING_CUSTOMER = seedAccount('CUSTOMER', 'returning.customer@shoplite.test');
 
 const DAY = 86_400_000;
 
@@ -186,16 +202,53 @@ export class Store {
       this.products.set(id, { ...p, id });
     }
     for (const c of seedCoupons(now)) this.coupons.set(c.code, c);
-    const admin: User = {
-      id: 'u_admin',
-      email: ADMIN_EMAIL,
-      name: 'Store Admin',
-      role: 'admin',
-      passwordHash: Bun.password.hashSync(ADMIN_PASSWORD, { algorithm: 'bcrypt', cost: 4 }),
+    this.addUser('u_admin', 'Store Admin', 'admin', ADMIN);
+    const returning = this.addUser('u_returning', 'Riley Returning', 'customer', RETURNING_CUSTOMER);
+    this.addPastOrder(returning, 'p_bk-001', 1, 'shipped', now - 30 * DAY);
+    this.addPastOrder(returning, 'p_hm-001', 2, 'placed', now - 2 * DAY);
+  }
+
+  private addUser(id: string, name: string, role: Role, account: SeedAccount): User {
+    const user: User = {
+      id,
+      email: account.email.toLowerCase(),
+      name,
+      role,
+      passwordHash: Bun.password.hashSync(account.password, { algorithm: 'bcrypt', cost: 4 }),
       failedLogins: 0,
       lockedUntil: null,
     };
-    this.users.set(admin.id, admin);
+    this.users.set(user.id, user);
+    return user;
+  }
+
+  /** Order history from before this start: priced like a real order, stock untouched. */
+  private addPastOrder(user: User, productId: string, quantity: number, status: OrderStatus, createdAt: number): void {
+    const product = this.products.get(productId);
+    if (!product) throw new Error(`seed: no product ${productId}`);
+    const subtotalCents = product.priceCents * quantity;
+    const shippingCents = subtotalCents >= 5000 ? 0 : 499;
+    const order: Order = {
+      id: this.nextId('o'),
+      userId: user.id,
+      lines: [{ productId, name: product.name, unitPriceCents: product.priceCents, quantity }],
+      couponCode: null,
+      subtotalCents,
+      discountCents: 0,
+      shippingCents,
+      totalCents: subtotalCents + shippingCents,
+      status,
+      shippingAddress: {
+        name: user.name,
+        line1: '1 Market Street',
+        city: 'Springfield',
+        postalCode: '12345',
+        country: 'US',
+      },
+      cardLast4: '4242',
+      createdAt,
+    };
+    this.orders.set(order.id, order);
   }
 
   cartOf(userId: string): Cart {

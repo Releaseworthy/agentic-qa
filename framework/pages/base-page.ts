@@ -1,4 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
+import { step } from '@utils/step';
 
 /** Shared by every page: hash navigation that waits for the view to finish rendering. */
 export abstract class BasePage {
@@ -18,6 +19,7 @@ export abstract class BasePage {
   }
 
   /** Waits for the SPA to finish rendering `path`. */
+  @step((path: string) => `Wait for #${path} to render`)
   async ready(path: string): Promise<void> {
     await this.page.locator(`body[data-ready="${path}"]`).waitFor();
   }

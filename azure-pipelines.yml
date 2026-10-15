@@ -3,7 +3,8 @@
 # published to Azure Test Plans (Test Runs), the Go/No-Go gate, and the
 # Claude Agent SDK regression workflow when a key is configured.
 #
-# Variables (pipeline or variable group): ANTHROPIC_API_KEY (secret, optional).
+# Variables (pipeline or variable group): STRING_HEX_SHOPLITE (secret, decrypts env/),
+# ANTHROPIC_API_KEY (secret, optional).
 
 trigger:
   branches:
@@ -51,6 +52,7 @@ stages:
             env:
               CI: 'true'
               PW_JSON_OUTPUT: out/results-$(PROJECT).json
+              STRING_HEX_SHOPLITE: $(STRING_HEX_SHOPLITE)
           - task: PublishTestResults@2
             displayName: Publish to Test Runs
             condition: succeededOrFailed()
@@ -73,6 +75,8 @@ stages:
           - script: curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.3" && echo "##vso[task.prependpath]$HOME/.bun/bin"
             displayName: Install Bun
           - script: bun install --frozen-lockfile && bun run qa:defects
+            env:
+              STRING_HEX_SHOPLITE: $(STRING_HEX_SHOPLITE)
 
   - stage: Gate
     dependsOn: Regression
@@ -115,6 +119,7 @@ stages:
             displayName: Agentic regression
             env:
               ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
+              STRING_HEX_SHOPLITE: $(STRING_HEX_SHOPLITE)
           - publish: out/agent-runs
             artifact: agent-runs
             condition: succeededOrFailed()

@@ -1,5 +1,5 @@
-import { HttpError } from '../http';
-import { store, type Product } from '../store';
+import { HttpError } from '@app/http';
+import { store, type Product } from '@app/store';
 
 export const CATEGORIES = ['books', 'electronics', 'home', 'toys'] as const;
 export const SORTS = ['name', 'price_asc', 'price_desc'] as const;

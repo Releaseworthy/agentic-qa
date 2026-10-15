@@ -1,5 +1,5 @@
-import { login, logout, publicUser, register } from '../domain/auth';
-import { authUser, body, json, str, type Route } from '../http';
+import { login, logout, publicUser, register } from '@app/domain/auth';
+import { authUser, body, json, str, type Route } from '@app/http';
 
 export const authRoutes: Route[] = [
   {

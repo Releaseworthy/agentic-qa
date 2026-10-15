@@ -48,6 +48,8 @@ jobs:
       HOME: /root
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      # Decrypts the saved accounts in env/ for the test runs the agents start.
+      STRING_HEX_SHOPLITE: ${{ secrets.STRING_HEX_SHOPLITE }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Credentials

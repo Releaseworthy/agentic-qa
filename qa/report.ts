@@ -1,6 +1,6 @@
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { ROOT } from './vault';
+import { ROOT } from '@qa/vault';
 
 /** Writes `out/<name>.json` and `out/<name>.md`; appends the Markdown to the GitHub job summary when there is one. */
 export function writeReport(name: string, data: unknown, markdown: string): { json: string; md: string } {

@@ -8,8 +8,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { codeIndex, related } from './index';
-import { findSymbol, grep, listHelpers, search } from './search';
+import { codeIndex, related } from '@codesearch/index';
+import { findSymbol, grep, listHelpers, search } from '@codesearch/search';
 
 const server = new McpServer(
   { name: 'codesearch', version: '1.0.0' },

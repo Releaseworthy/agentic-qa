@@ -1,5 +1,7 @@
 import { test as base, expect } from '@playwright/test';
 import { Api, ApiError } from '@api';
+import { Account } from '@auth/accounts';
+import { newCustomer, session, storageState, type Customer, type Session } from '@auth/session';
 import { LoginPage, RegisterPage } from '@pages/auth-pages';
 import { CartPage } from '@pages/cart-page';
 import { CatalogPage } from '@pages/catalog-page';
@@ -7,20 +9,25 @@ import { CheckoutPage } from '@pages/checkout-page';
 import { Header } from '@pages/header';
 import { OrderPage, OrdersPage } from '@pages/order-pages';
 import { ProductPage } from '@pages/product-page';
-import { Seed, type Customer } from '@setup/seed';
+import { Seed } from '@setup/seed';
 
 type Options = {
-  /** true: the browser starts signed in as `customer`. Default false. */
-  signedIn: boolean;
+  /**
+   * Who the browser starts signed in as — straight from a storage state, never
+   * through the login form (that has its own tests). Default GUEST.
+   */
+  account: Account;
 };
 
 type Fixtures = {
-  /** Anonymous API helpers; `api.as(customer)` to act as someone. */
+  /** Anonymous API helpers; `api.as(customer)` / `api.as(user)` to act as someone. */
   api: Api;
-  /** Test-data setup over the API (fresh customers, products, coupons, orders). */
+  /** Test-data setup over the API (fresh customers, products, coupons, orders). Refused on read-only envs. */
   seed: Seed;
-  /** A customer registered for this test only. */
+  /** A customer registered for this test only — the signed-in one when `account` is NEW_CUSTOMER. */
   customer: Customer;
+  /** The session the browser is signed in with. Throws for GUEST. */
+  user: Session;
   header: Header;
   loginPage: LoginPage;
   registerPage: RegisterPage;
@@ -32,26 +39,31 @@ type Fixtures = {
   ordersPage: OrdersPage;
 };
 
-export const test = base.extend<Options & Fixtures>({
-  signedIn: [false, { option: true }],
+type Internal = {
+  /** `account` resolved to a session once per test; shared by storageState, user and customer. */
+  _session: Session | undefined;
+};
+
+function isCustomer(s: Session | undefined): s is Customer {
+  return s?.account === Account.NEW_CUSTOMER;
+}
+
+export const test = base.extend<Options & Fixtures & Internal>({
+  account: [Account.GUEST, { option: true }],
+
+  _session: async ({ account, request }, use) => {
+    if (account === Account.GUEST) return use(undefined);
+    await use(account === Account.NEW_CUSTOMER ? await newCustomer(request) : await session(account));
+  },
+  storageState: async ({ _session }, use) => use(storageState(_session)),
+  user: async ({ _session }, use) => {
+    if (_session === undefined) throw new Error('no user: the test runs as Account.GUEST — set test.use({ account })');
+    await use(_session);
+  },
+  customer: async ({ _session, request }, use) => use(isCustomer(_session) ? _session : await newCustomer(request)),
 
   api: async ({ request }, use) => use(new Api(request)),
   seed: async ({ request }, use) => use(new Seed(request)),
-  customer: async ({ seed }, use) => use(await seed.customer()),
-
-  // Signing in is setup, not the thing under test: the token goes straight into
-  // localStorage before the app loads (the login form has its own tests).
-  page: async ({ page, signedIn, customer }, use) => {
-    if (signedIn)
-      await page.addInitScript(
-        ([token, name]) => {
-          localStorage.setItem('shoplite.token', token);
-          localStorage.setItem('shoplite.user', name);
-        },
-        [customer.token, customer.name] as const,
-      );
-    await use(page);
-  },
 
   header: async ({ page }, use) => use(new Header(page)),
   loginPage: async ({ page }, use) => use(new LoginPage(page)),
@@ -70,9 +82,12 @@ export async function expectRefused(call: Promise<unknown>, status: number, code
     () => undefined,
     (e: unknown) => e,
   );
-  expect(error, `expected ${status} ${code}, but the call succeeded`).toBeInstanceOf(ApiError);
+  expect(error, `expected a refusal with ${status} ${code}, but the call succeeded`).toBeInstanceOf(ApiError);
   const apiError = error as ApiError;
-  expect({ status: apiError.status, code: apiError.code }).toEqual({ status, code });
+  expect({ status: apiError.status, code: apiError.code }, `refusal of ${apiError.method} ${apiError.path}`).toEqual({
+    status,
+    code,
+  });
   return apiError;
 }
 
@@ -83,6 +98,7 @@ export function money(cents: number): string {
 
 export { expect };
 export { ApiError } from '@api';
+export { Account } from '@auth/accounts';
+export type { Customer, Session } from '@auth/session';
 export { Cards } from '@data/cards';
 export { newAddress, newRegistration, uniqueCouponCode } from '@data/people';
-export type { Customer } from '@setup/seed';

@@ -1,98 +1,108 @@
 /**
- * ShopLite API responses as ArkType schemas. Each validates a response and is
- * the source of its TypeScript type.
+ * ShopLite API responses as zod schemas. Each validates a response and is the
+ * source of its TypeScript type.
  */
 
-import { type } from 'arktype';
+import { z } from 'zod';
 
-export const ErrorBody = type({ error: { code: 'string', message: 'string' } });
+const cents = z.number().int().nonnegative();
+const positiveCents = z.number().int().positive();
 
-export const User = type({
-  id: 'string',
-  email: 'string.email',
-  name: 'string',
-  role: "'customer' | 'admin'",
+export const ErrorBody = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
+
+export const User = z.object({
+  id: z.string(),
+  email: z.email(),
+  name: z.string(),
+  role: z.enum(['customer', 'admin']),
 });
-export type User = typeof User.infer;
+export type User = z.infer<typeof User>;
 
-export const AuthResult = type({ user: User, token: 'string > 20' });
-export type AuthResult = typeof AuthResult.infer;
+export const AuthResult = z.object({ user: User, token: z.string().min(21), expiresAt: z.iso.datetime() });
+export type AuthResult = z.infer<typeof AuthResult>;
 
-export const Category = type("'books' | 'electronics' | 'home' | 'toys'");
-export type Category = typeof Category.infer;
+export const Category = z.enum(['books', 'electronics', 'home', 'toys']);
+export type Category = z.infer<typeof Category>;
 
-export const Product = type({
-  id: 'string',
-  sku: 'string',
-  name: 'string > 0',
+export const Product = z.object({
+  id: z.string(),
+  sku: z.string(),
+  name: z.string().min(1),
   category: Category,
-  description: 'string',
-  priceCents: 'number.integer > 0',
-  stock: 'number.integer >= 0',
+  description: z.string(),
+  priceCents: positiveCents,
+  stock: z.number().int().nonnegative(),
 });
-export type Product = typeof Product.infer;
+export type Product = z.infer<typeof Product>;
 
-export const ProductList = type({ items: Product.array(), count: 'number.integer >= 0' });
-export type ProductList = typeof ProductList.infer;
+export const ProductList = z.object({ items: z.array(Product), count: z.number().int().nonnegative() });
+export type ProductList = z.infer<typeof ProductList>;
 
-const Totals = type({
-  subtotalCents: 'number.integer >= 0',
-  discountCents: 'number.integer >= 0',
-  shippingCents: 'number.integer >= 0',
-  totalCents: 'number.integer >= 0',
+const Totals = z.object({
+  subtotalCents: cents,
+  discountCents: cents,
+  shippingCents: cents,
+  totalCents: cents,
 });
 
-export const Cart = Totals.and({
-  items: type({
-    productId: 'string',
-    name: 'string',
-    unitPriceCents: 'number.integer > 0',
-    quantity: 'number.integer > 0',
-    lineTotalCents: 'number.integer > 0',
-  }).array(),
-  couponCode: 'string | null',
+export const Cart = Totals.extend({
+  items: z.array(
+    z.object({
+      productId: z.string(),
+      name: z.string(),
+      unitPriceCents: positiveCents,
+      quantity: z.number().int().positive(),
+      lineTotalCents: positiveCents,
+    }),
+  ),
+  couponCode: z.string().nullable(),
 });
-export type Cart = typeof Cart.infer;
+export type Cart = z.infer<typeof Cart>;
 
-export const Address = type({
-  name: 'string',
-  line1: 'string',
-  city: 'string',
-  postalCode: 'string',
-  country: 'string',
+export const Address = z.object({
+  name: z.string(),
+  line1: z.string(),
+  city: z.string(),
+  postalCode: z.string(),
+  country: z.string(),
 });
-export type Address = typeof Address.infer;
+export type Address = z.infer<typeof Address>;
 
-export const OrderStatus = type("'placed' | 'shipped' | 'cancelled'");
-export type OrderStatus = typeof OrderStatus.infer;
+export const OrderStatus = z.enum(['placed', 'shipped', 'cancelled']);
+export type OrderStatus = z.infer<typeof OrderStatus>;
 
-export const Order = Totals.and({
-  id: 'string',
-  userId: 'string',
-  lines: type({
-    productId: 'string',
-    name: 'string',
-    unitPriceCents: 'number.integer > 0',
-    quantity: 'number.integer > 0',
-  }).array(),
-  couponCode: 'string | null',
+export const Order = Totals.extend({
+  id: z.string(),
+  userId: z.string(),
+  lines: z.array(
+    z.object({
+      productId: z.string(),
+      name: z.string(),
+      unitPriceCents: positiveCents,
+      quantity: z.number().int().positive(),
+    }),
+  ),
+  couponCode: z.string().nullable(),
   status: OrderStatus,
   shippingAddress: Address,
-  cardLast4: /^\d{4}$/,
-  createdAt: 'number.integer > 0',
+  cardLast4: z.string().regex(/^\d{4}$/),
+  createdAt: z.number().int().positive(),
 });
-export type Order = typeof Order.infer;
+export type Order = z.infer<typeof Order>;
 
-export const OrderList = type({ items: Order.array() });
+export const OrderList = z.object({ items: z.array(Order) });
 
-export const Coupon = type({
-  code: 'string',
-  kind: "'percent' | 'fixed'",
-  value: 'number.integer > 0',
-  minSubtotalCents: 'number.integer >= 0',
-  maxDiscountCents: 'number.integer | null',
-  expiresAt: 'number.integer | null',
+export const Coupon = z.object({
+  code: z.string(),
+  kind: z.enum(['percent', 'fixed']),
+  value: z.number().int().positive(),
+  minSubtotalCents: cents,
+  maxDiscountCents: z.number().int().nullable(),
+  expiresAt: z.number().int().nullable(),
 });
-export type Coupon = typeof Coupon.infer;
+export type Coupon = z.infer<typeof Coupon>;
 
-export const Empty = type('null');
+export const Health = z.object({ ok: z.literal(true), env: z.string(), defects: z.array(z.string()) });
+export type Health = z.infer<typeof Health>;
+
+export const Empty = z.null();

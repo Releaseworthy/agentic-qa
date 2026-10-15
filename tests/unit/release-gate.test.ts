@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { assess } from '../../qa/release-gate';
-import { doc, test, vault } from './fakes';
+import { assess } from '@qa/release-gate';
+import { doc, test, vault } from '@tests/unit/fakes';
 
 const green = [
   test({ tags: ['FEAT-CART', 'BR-CART-01'] }),

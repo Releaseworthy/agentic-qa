@@ -1,7 +1,7 @@
 # Driving the browser
 
 - **`bunx playwright-cli`** only, headless, one command per action, always with your own session: `-s=<role>-<topic>` (e.g. `-s=explorer-coupon`). Never share a session with another agent.
-- **Seed first, then open.** Start state comes from `bun run seed:session --name <session> [--product <price>:<stock>] [--cart <qty>] [--coupon <code>] [--order] [--shipped]` — it starts ShopLite if needed, creates the data over the API, and saves a signed-in state. Then:
+- **Seed first, then open.** Start state comes from `bun run seed:session --name <session> [--product <price>:<stock>] [--cart <qty>] [--coupon <code>] [--order] [--shipped]` — it starts ShopLite as `TEST_ENV` (default `dev`) if needed, creates the data over the API, and saves a signed-in state. `--account returning-customer` signs in as the saved account instead and seeds nothing (the only option on live). Then:
   ```
   bunx playwright-cli -s=<session> open http://localhost:3100
   bunx playwright-cli -s=<session> state-load out/sessions/<session>.json

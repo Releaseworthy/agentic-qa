@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 import type { Registration } from '@api/auth-api';
 import { BasePage } from '@pages/base-page';
+import { step } from '@utils/step';
 
 export class LoginPage extends BasePage {
   readonly email: Locator;
@@ -14,10 +15,12 @@ export class LoginPage extends BasePage {
     this.submit = page.getByRole('button', { name: 'Sign in' });
   }
 
+  @step((next?: string) => (next ? `Open sign-in (then ${next})` : 'Open sign-in'))
   goto(next?: string): Promise<void> {
     return this.open(next ? `/login?next=${encodeURIComponent(next)}` : '/login');
   }
 
+  @step((email: string) => `Sign in as ${email}`)
   async signIn(email: string, password: string): Promise<void> {
     await this.email.fill(email);
     await this.password.fill(password);
@@ -39,10 +42,12 @@ export class RegisterPage extends BasePage {
     this.submit = page.getByRole('button', { name: 'Create account' });
   }
 
+  @step('Open registration')
   goto(): Promise<void> {
     return this.open('/register');
   }
 
+  @step((input: Registration) => `Register ${input.email}`)
   async register(input: Registration): Promise<void> {
     await this.name.fill(input.name);
     await this.email.fill(input.email);

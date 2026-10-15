@@ -4,6 +4,9 @@ import playwright from 'eslint-plugin-playwright';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
+const USE_ALIAS = { regex: '^\\.{1,2}/', message: 'Import through a tsconfig path alias (@api, @pages/*, @app/*, …).' };
+const USE_DATE_UTILS = 'Dates and time go through @utils/date.';
+
 export default defineConfig(
   globalIgnores([
     'playwright-report/',
@@ -13,6 +16,7 @@ export default defineConfig(
     '.rag/',
     '.venv/',
     '.playwright-cli/',
+    '.auth/',
     'app/web/',
   ]),
   js.configs.recommended,
@@ -25,6 +29,25 @@ export default defineConfig(
       // Playwright fixture maps must be `type`s (an interface has no index signature).
       '@typescript-eslint/consistent-type-definitions': 'off',
       'no-empty-pattern': ['error', { allowObjectPatternsAsParameters: true }],
+      'no-restricted-imports': ['error', { patterns: [USE_ALIAS] }],
+    },
+  },
+  // One place for date formats and the clock: outside the app, only framework/utils/date.ts uses date-fns or `Date`.
+  {
+    ignores: ['app/**', 'framework/utils/date.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [{ name: 'date-fns', message: USE_DATE_UTILS }],
+          patterns: [USE_ALIAS, { group: ['date-fns/*'], message: USE_DATE_UTILS }],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        { selector: "NewExpression[callee.name='Date']", message: USE_DATE_UTILS },
+        { selector: "MemberExpression[object.name='Date'][property.name='now']", message: USE_DATE_UTILS },
+      ],
     },
   },
   // Specs, page objects and fixtures: missing awaits, hard waits, force clicks, page.pause().

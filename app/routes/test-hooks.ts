@@ -1,6 +1,6 @@
-import { enabledDefects, setDefects } from '../defects';
-import { body, HttpError, json, str, type Route } from '../http';
-import { store } from '../store';
+import { enabledDefects, setDefects } from '@app/defects';
+import { body, HttpError, json, str, type Route } from '@app/http';
+import { store } from '@app/store';
 
 /** Test-only endpoints; mounted only when SHOPLITE_TEST_HOOKS is not "0". */
 export const testHookRoutes: Route[] = [

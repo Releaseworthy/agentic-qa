@@ -3,6 +3,7 @@ import type { Address } from '@api/schemas';
 import type { Card } from '@data/cards';
 import { BasePage } from '@pages/base-page';
 import { Totals } from '@pages/cart-page';
+import { step } from '@utils/step';
 
 export class CheckoutPage extends BasePage {
   readonly placeOrderButton: Locator;
@@ -14,10 +15,15 @@ export class CheckoutPage extends BasePage {
     this.totals = new Totals(page);
   }
 
+  @step('Open checkout')
   goto(): Promise<void> {
     return this.open('/checkout');
   }
 
+  @step(
+    (address: Address, card: Card) =>
+      `Fill checkout: ship to ${address.city}, pay with card ending ${card.cardNumber.slice(-4)}`,
+  )
   async fill(address: Address, card: Card): Promise<void> {
     await this.page.getByLabel('Full name', { exact: true }).fill(address.name);
     await this.page.getByLabel('Address', { exact: true }).fill(address.line1);
@@ -29,6 +35,7 @@ export class CheckoutPage extends BasePage {
     await this.page.getByLabel('CVC', { exact: true }).fill(card.cvc);
   }
 
+  @step('Place the order')
   async placeOrder(): Promise<void> {
     const answered = this.page.waitForResponse(
       (r) => r.url().endsWith('/api/orders') && r.request().method() === 'POST',

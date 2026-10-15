@@ -5,6 +5,7 @@ import { CartApi } from '@api/cart-api';
 import { HttpClient } from '@api/client';
 import { OrdersApi } from '@api/orders-api';
 import { ProductsApi } from '@api/products-api';
+import { Health } from '@api/schemas';
 
 /** Every API helper, acting as one caller (anonymous, or the owner of `token`). */
 export class Api extends HttpClient {
@@ -26,6 +27,11 @@ export class Api extends HttpClient {
   /** The same helpers acting as `who`. */
   as(who: { token: string } | undefined): Api {
     return new Api(this.request, who?.token);
+  }
+
+  /** Which environment and build answer at the base URL. */
+  health(): Promise<Health> {
+    return this.call('GET', '/health', Health);
   }
 }
 

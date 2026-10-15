@@ -1,5 +1,5 @@
-import { cancelOrder, getOrder, listOrders, placeOrder } from '../domain/orders';
-import { authUser, body, HttpError, json, str, type Route } from '../http';
+import { cancelOrder, getOrder, listOrders, placeOrder } from '@app/domain/orders';
+import { authUser, body, HttpError, json, str, type Route } from '@app/http';
 
 function object(data: Record<string, unknown>, key: string): Record<string, unknown> {
   const value = data[key];

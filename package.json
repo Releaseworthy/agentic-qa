@@ -8,14 +8,16 @@
   "packageManager": "bun@1.4.3",
   "scripts": {
     "setup": "bun install --frozen-lockfile && bun run browsers && uv sync && bun run rag:build",
-    "app": "bun run app/server.ts",
-    "app:defects": "SHOPLITE_DEFECTS=all bun run app/server.ts",
+    "app": "bun run framework/setup/app-server.ts",
+    "app:defects": "SHOPLITE_DEFECTS=all bun run framework/setup/app-server.ts",
     "test": "bun --bun playwright test --project=api --project=chromium",
     "test:api": "bun --bun playwright test --project=api",
     "test:ui": "bun --bun playwright test --project=chromium",
     "test:all": "bun --bun playwright test",
     "test:smoke": "bun --bun playwright test --project=api --project=chromium --grep @smoke",
     "test:unit": "bun test tests/unit",
+    "test:staging": "TEST_ENV=staging bun --bun playwright test --project=api --project=chromium",
+    "test:live": "TEST_ENV=live bun --bun playwright test --project=api --project=chromium",
     "report": "bun --bun playwright show-report",
     "browsers": "playwright install chromium firefox webkit && playwright-cli install-browser chromium",
     "qa:impact": "bun run qa/impact.ts",
@@ -34,7 +36,8 @@
     "lint:fix": "bun --bun eslint . --fix",
     "format": "bun --bun prettier . --write",
     "format:check": "bun --bun prettier . --check",
-    "seed:session": "bun run framework/setup/session-cli.ts"
+    "seed:session": "bun run framework/setup/session-cli.ts",
+    "crypto": "bun run scripts/crypto.ts"
   },
   "devDependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.300",
@@ -46,7 +49,8 @@
     "@types/bun": "^1.4.3",
     "@types/node": "^26.6.5",
     "@vscode/ripgrep": "^1.18.0",
-    "arktype": "^2.2.8",
+    "date-fns": "^4.4.0",
+    "dotenv": "^18.0.8",
     "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-playwright": "^2.12.1",

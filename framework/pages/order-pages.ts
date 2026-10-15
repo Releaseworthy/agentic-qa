@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 import { BasePage } from '@pages/base-page';
 import { Totals } from '@pages/cart-page';
+import { step } from '@utils/step';
 
 export class OrderPage extends BasePage {
   readonly heading: Locator;
@@ -20,11 +21,13 @@ export class OrderPage extends BasePage {
     this.totals = new Totals(page);
   }
 
+  @step((orderId: string) => `Open order ${orderId}`)
   goto(orderId: string): Promise<void> {
     return this.open(`/orders/${orderId}`);
   }
 
   /** Cancels through the confirm dialog and waits for the API's answer. */
+  @step('Cancel the order (confirm the dialog)')
   async cancel(): Promise<void> {
     this.page.once('dialog', (d) => void d.accept());
     const answered = this.page.waitForResponse((r) => r.url().endsWith('/cancel'));
@@ -43,6 +46,7 @@ export class OrdersPage extends BasePage {
     this.emptyMessage = page.getByText('You have no orders yet.');
   }
 
+  @step('Open order history')
   goto(): Promise<void> {
     return this.open('/orders');
   }

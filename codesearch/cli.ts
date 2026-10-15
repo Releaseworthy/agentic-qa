@@ -8,8 +8,8 @@
  */
 
 import { parseArgs } from 'node:util';
-import { related } from './index';
-import { findSymbol, listHelpers, search } from './search';
+import { related } from '@codesearch/index';
+import { findSymbol, listHelpers, search } from '@codesearch/search';
 
 const { values, positionals } = parseArgs({
   args: Bun.argv.slice(2),

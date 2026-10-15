@@ -1,5 +1,6 @@
 import { defineConfig, devices, type ReporterDescription } from '@playwright/test';
-import { config, Timeout } from './framework/config';
+import { env } from '@config/env';
+import { Timeout } from '@config/timeouts';
 
 const CI = Boolean(process.env.CI);
 
@@ -18,28 +19,30 @@ export default defineConfig({
   globalSetup: './framework/global-setup.ts',
   timeout: Timeout.TEST,
   expect: { timeout: Timeout.EXPECT },
+  // A read-only environment (live) runs only the tests that change nothing.
+  grep: env.readOnly ? /@readonly/ : undefined,
   fullyParallel: true,
   forbidOnly: CI,
   retries: CI ? 1 : 0,
   workers: CI ? 4 : undefined,
   reporter,
   use: {
-    baseURL: config.baseUrl,
+    baseURL: env.baseUrl,
     actionTimeout: Timeout.ACTION,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
-  // The system under test starts with the run (fresh in-memory data) unless one is already up.
-  webServer: process.env.BASE_URL
-    ? undefined
-    : {
-        command: 'bun run app/server.ts',
-        url: `${config.baseUrl}/health`,
+  // START_APP: ShopLite starts with the run as TEST_ENV (fresh in-memory data) unless one is already up.
+  webServer: env.startApp
+    ? {
+        command: 'bun run framework/setup/app-server.ts',
+        url: `${env.baseUrl}/health`,
         reuseExistingServer: !CI,
         timeout: Timeout.SERVER_START,
-        env: { SHOPLITE_DEFECTS: process.env.SHOPLITE_DEFECTS ?? '' },
-      },
+        env: { TEST_ENV: env.name, SHOPLITE_DEFECTS: process.env.SHOPLITE_DEFECTS ?? '' },
+      }
+    : undefined,
   projects: [
     { name: 'api', testDir: './tests/api' },
     { name: 'chromium', testDir: './tests/ui', use: { ...devices['Desktop Chrome'] } },

@@ -2,6 +2,7 @@
 'use strict';
 
 const TOKEN_KEY = 'shoplite.token';
+const EXPIRES_KEY = 'shoplite.expiresAt';
 const view = document.getElementById('view');
 const toast = document.getElementById('toast');
 
@@ -9,8 +10,15 @@ const money = (cents) => `$${(cents / 100).toFixed(2)}`;
 const esc = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+/** The session token, unless the expiry the server gave with it has passed. */
 function token() {
+  const expiresAt = localStorage.getItem(EXPIRES_KEY);
+  if (expiresAt && Date.parse(expiresAt) <= Date.now()) clearSession();
   return localStorage.getItem(TOKEN_KEY);
+}
+
+function clearSession() {
+  for (const key of [TOKEN_KEY, EXPIRES_KEY, 'shoplite.user']) localStorage.removeItem(key);
 }
 
 async function api(method, path, data) {
@@ -40,8 +48,7 @@ function showError(container, err) {
 
 function signOut(callApi = true) {
   if (callApi && token()) api('POST', '/api/auth/logout').catch(() => {});
-  localStorage.removeItem(TOKEN_KEY);
-  localStorage.removeItem('shoplite.user');
+  clearSession();
   refreshChrome();
   location.hash = '#/login';
 }
@@ -363,8 +370,9 @@ function authView(mode, params) {
     e.preventDefault();
     const f = Object.fromEntries(new FormData(e.target));
     try {
-      const { token: t, user } = await api('POST', register ? '/api/auth/register' : '/api/auth/login', f);
+      const { token: t, user, expiresAt } = await api('POST', register ? '/api/auth/register' : '/api/auth/login', f);
       localStorage.setItem(TOKEN_KEY, t);
+      localStorage.setItem(EXPIRES_KEY, expiresAt);
       localStorage.setItem('shoplite.user', user.name);
       await refreshChrome();
       location.hash = `#${params.get('next') ?? '/'}`;
@@ -394,6 +402,15 @@ async function route() {
   document.body.dataset.ready = path || '/';
 }
 
+/** Outside live, a badge says which environment this is — no one mistakes staging for the real shop. */
+async function showEnvironment() {
+  const { env } = await fetch('/health').then((r) => r.json());
+  const badge = document.getElementById('env-badge');
+  badge.textContent = env;
+  badge.hidden = env === 'live';
+}
+
 window.addEventListener('hashchange', route);
+showEnvironment().catch(() => {});
 refreshChrome();
 route();
