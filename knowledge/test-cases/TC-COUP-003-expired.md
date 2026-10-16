@@ -1,0 +1,26 @@
+---
+id: TC-COUP-003
+type: test-case
+title: An expired coupon is refused
+feature: FEAT-COUPON
+covers: [BR-COUP-03]
+priority: medium
+status: ready
+automated_by: tests/ui/cart.spec.ts › Cart › an expired coupon is refused
+---
+
+# TC-COUP-003 — An expired coupon is refused
+
+## Preconditions
+
+- A signed-in customer with a $40.00 product in the cart: `bun run seed:session --name <session> --product 4000:10 --cart 1`.
+
+## Steps
+
+| # | Action                                   | Expected result                                   |
+| - | ---------------------------------------- | ------------------------------------------------- |
+| 1 | Open **Cart**, Coupon code `SUMMER20`, **Apply coupon** | Alert "This coupon has expired"; Discount -$0.00 |
+
+## Expected overall result
+
+`SUMMER20` is seeded expired and never applies ([[BR-COUP-03]]).

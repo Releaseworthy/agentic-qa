@@ -21,6 +21,7 @@ Read `.claude/rules/orchestration.md` first.
    - Impact on existing rules and tests (ids), proposed new rule documents.
    - Test ideas: API (endpoint + journey) and UI, by priority.
 5. **Review:** `test-reviewer` (target: AC). Apply revisions (≤ 2 rounds).
-6. Do **not** edit the card itself — Product owns it. Offer the refined AC for them to paste.
+6. Do **not** edit the card itself — Product owns it. Offer the refined AC for them to paste, or file it with `propose_knowledge` (`type: card`, `kind: update`): the gate routes it to Product.
+7. **Reflect: `.claude/rules/self-improve.md`.**
 
 Final response: the output path, the open questions, the refined AC count, conflicts found.

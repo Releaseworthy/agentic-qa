@@ -9,7 +9,11 @@ test.describe(
       seed,
       customer,
     }) => {
-      const [cheap, extra] = [await seed.product({ priceCents: 1800 }), await seed.product({ priceCents: 1500 })];
+      const [cheap, extra] = await test.step('Given an $18.00 and a $15.00 product', async () => [
+        await seed.product({ priceCents: 1800 }),
+        await seed.product({ priceCents: 1500 }),
+      ]);
+
       const me = api.as(customer);
 
       await test.step('At $18.00, SAVE5 is refused: its minimum is $30.00', async () => {

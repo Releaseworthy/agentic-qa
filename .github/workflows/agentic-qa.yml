@@ -5,6 +5,8 @@ name: Agentic QA
 #   - on demand: pick the workflow and its arguments
 #   - on a PR labelled `agentic-qa`: a risk-based test plan for the PR, then
 #     impact-based regression with triage; the summary is posted on the PR
+#   - on a merged PR: `learn <PR>` — review comments and human edits to agent output become curated
+#     knowledge (gate + independent judge); accepted lessons arrive as a PR
 # Workflows that write tests or vault documents open a pull request with them.
 #
 # Needs one repository secret: ANTHROPIC_API_KEY, or CLAUDE_CODE_OAUTH_TOKEN
@@ -17,7 +19,27 @@ on:
         description: Workflow
         type: choice
         options:
-          [qa-plan, refine-ac, api-testgen, api-journey-testgen, ui-qa, adhoc-test, regression, release-gate, learn]
+          [
+            qa-plan,
+            refine-ac,
+            write-testcases,
+            run-testcases,
+            automate-tc,
+            api-testgen,
+            api-journey-testgen,
+            ui-qa,
+            adhoc-test,
+            verify-bug,
+            bug-triage,
+            retest-bug,
+            regression,
+            flaky-hunt,
+            heal-tests,
+            smoke-check,
+            release-gate,
+            test-report,
+            learn,
+          ]
       args:
         description: 'Arguments, e.g. CARD-142 · "PATCH /api/cart/items/:productId" · --base origin/main'
         type: string
@@ -27,7 +49,7 @@ on:
         type: string
         default: ''
   pull_request:
-    types: [labeled]
+    types: [labeled, closed]
 
 permissions:
   contents: write
@@ -39,8 +61,12 @@ defaults:
 
 jobs:
   agent:
-    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'agentic-qa'
-    name: ${{ inputs.workflow || 'qa-plan + regression' }}
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'agentic-qa') ||
+      (github.event.action == 'closed' && github.event.pull_request.merged &&
+       !startsWith(github.event.pull_request.head.ref, 'agentic/learn-'))
+    name: ${{ inputs.workflow || (github.event.action == 'closed' && 'learn') || 'qa-plan + regression' }}
     runs-on: ubuntu-latest
     container: mcr.microsoft.com/playwright:v1.64.1-noble
     timeout-minutes: 60
@@ -86,12 +112,18 @@ jobs:
           BUDGET: ${{ inputs.budget }}
 
       - name: Plan and regress this PR
-        if: steps.auth.outputs.ok == 'true' && github.event_name == 'pull_request'
+        if: steps.auth.outputs.ok == 'true' && github.event.action == 'labeled'
         run: |
           bun run agent qa-plan --base "origin/$BASE"
           bun run agent regression --base "origin/$BASE"
         env:
           BASE: ${{ github.base_ref }}
+
+      - name: Learn from this merged PR
+        if: steps.auth.outputs.ok == 'true' && github.event.action == 'closed'
+        run: bun run agent learn "$PR"
+        env:
+          PR: ${{ github.event.pull_request.number }}
 
       - name: Comment the summary on the PR
         if: ${{ !cancelled() && steps.auth.outputs.ok == 'true' && github.event_name == 'pull_request' }}
@@ -102,9 +134,9 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
 
       - name: Open a PR with what the agent wrote
-        if: ${{ success() && steps.auth.outputs.ok == 'true' && github.event_name == 'workflow_dispatch' }}
+        if: ${{ success() && steps.auth.outputs.ok == 'true' && (github.event_name == 'workflow_dispatch' || github.event.action == 'closed') }}
         run: |
-          git add -A tests framework knowledge
+          git add -A tests framework knowledge rag/golden.learned.yaml
           if git diff --cached --quiet; then echo "Nothing written."; exit 0; fi
           branch="agentic/$WORKFLOW-$GITHUB_RUN_NUMBER"
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
@@ -112,8 +144,8 @@ jobs:
           git push origin "HEAD:$branch"
           gh pr create --head "$branch" --title "agentic-qa: $WORKFLOW $ARGS" --body-file "$(ls -d out/agent-runs/*/ | tail -1)summary.md"
         env:
-          WORKFLOW: ${{ inputs.workflow }}
-          ARGS: ${{ inputs.args }}
+          WORKFLOW: ${{ inputs.workflow || 'learn' }}
+          ARGS: ${{ inputs.args || github.event.pull_request.number }}
 
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && steps.auth.outputs.ok == 'true' }}
@@ -125,5 +157,10 @@ jobs:
             out/ac/
             out/adhoc/
             out/release/
+            out/manual-runs/
+            out/bugs/
+            out/triage/
+            out/reports/
+            out/smoke/
             out/*.md
           retention-days: 14

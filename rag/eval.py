@@ -29,6 +29,8 @@ from rag.vault import load_vault
 from rag.vector import VectorStore
 
 GOLDEN = Path(__file__).with_name("golden.yaml")
+# Questions accepted knowledge changes answer (written by rag.curate): once learned, a document must stay findable.
+LEARNED = Path(__file__).with_name("golden.learned.yaml")
 OUT = ROOT / "out" / "rag-eval.json"
 K = 5
 # The gate: hybrid must find an answer for (almost) every question and beat vector-only on rank.
@@ -43,8 +45,10 @@ class Case:
     facts: list[str]
 
 
-def load_cases() -> list[Case]:
+def load_cases(learned: bool = True) -> list[Case]:
     raw: list[dict[str, Any]] = yaml.safe_load(GOLDEN.read_text(encoding="utf-8"))
+    if learned and LEARNED.exists():
+        raw += yaml.safe_load(LEARNED.read_text(encoding="utf-8")) or []
     return [Case(c["q"], c["expected"], c.get("facts", [])) for c in raw]
 
 

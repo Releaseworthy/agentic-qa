@@ -54,8 +54,15 @@ def parse(path: Path, text: str) -> Document:
     )
 
 
+def is_active(doc: Document) -> bool:
+    """Deprecated documents stay in the vault as history but are never retrieved."""
+    return doc.meta.get("status") != "deprecated"
+
+
 def load_vault(root: Path = KNOWLEDGE_DIR) -> list[Document]:
-    docs = [parse(p, p.read_text(encoding="utf-8")) for p in sorted(root.rglob("*.md"))]
+    """Every document; folders starting with `_` (curation ledger, pending proposals) are not knowledge."""
+    paths = [p for p in sorted(root.rglob("*.md")) if not any(s.startswith("_") for s in p.relative_to(root).parts)]
+    docs = [parse(p, p.read_text(encoding="utf-8")) for p in paths]
     ids = [d.id for d in docs]
     dupes = {i for i in ids if ids.count(i) > 1}
     if dupes:

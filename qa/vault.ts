@@ -10,18 +10,40 @@ export type Doc = { id: string; type: string; title: string; path: string; meta:
 
 export type Feature = Doc & { criticality: number; code: string[]; rules: string[]; dependsOn: string[] };
 export type Rule = Doc & { feature: string; severity: Severity };
-export type Defect = Doc & { status: 'open' | 'closed'; severity: Severity; feature: string };
+export type Defect = Doc & {
+  status: DefectStatus;
+  severity: Severity;
+  feature: string;
+  rule: string;
+  priority: string;
+  /** ISO day the defect was reported; empty when unknown. */
+  reported: string;
+};
+export type TestCase = Doc & { feature: string; covers: string[]; priority: string; automatedBy: string };
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
 export const SEVERITY_RANK: Record<Severity, number> = { critical: 4, high: 3, medium: 2, low: 1 };
 
+/**
+ * new → confirmed → fixed → closed, or reopened when the retest fails; rejected (with a `resolution`:
+ * not-a-bug, duplicate, cannot-reproduce, wont-fix) at any point. `open` is a legacy alias of confirmed.
+ */
+export const DEFECT_STATUSES = ['new', 'confirmed', 'open', 'fixed', 'reopened', 'closed', 'rejected'] as const;
+export type DefectStatus = (typeof DEFECT_STATUSES)[number];
+/** Still a risk to the release: anything not closed or rejected — a fix nobody retested is not done. */
+export const isOpen = (d: Defect): boolean => d.status !== 'closed' && d.status !== 'rejected';
+
 const scalar = (v: unknown): string => (typeof v === 'string' || typeof v === 'number' ? String(v) : '');
 const list = (v: unknown): string[] =>
   Array.isArray(v) ? v.map(scalar).filter(Boolean) : scalar(v) ? [scalar(v)] : [];
+const status = (v: unknown): DefectStatus =>
+  (DEFECT_STATUSES as readonly string[]).includes(scalar(v)) ? (scalar(v) as DefectStatus) : 'new';
 
 export function loadDocs(dir = join(ROOT, 'knowledge')): Doc[] {
   const docs: Doc[] = [];
   for (const rel of new Glob('**/*.md').scanSync({ cwd: dir })) {
+    // `_curation/` holds the ledger and proposals waiting for a human — not knowledge.
+    if (rel.split(/[\\/]/).some((part) => part.startsWith('_'))) continue;
     const path = join(dir, rel);
     const text = readFileSync(path, 'utf8');
     const m = /^---\n([\s\S]*?)\n---/.exec(text.replaceAll('\r\n', '\n'));
@@ -42,6 +64,7 @@ export class Vault {
   readonly features: Feature[];
   readonly rules: Rule[];
   readonly defects: Defect[];
+  readonly testCases: TestCase[];
 
   constructor(readonly docs: Doc[] = loadDocs()) {
     this.features = docs
@@ -60,9 +83,21 @@ export class Vault {
       .filter((d) => d.type === 'defect')
       .map((d) => ({
         ...d,
-        status: d.meta.status === 'closed' ? 'closed' : 'open',
+        status: status(d.meta.status),
         severity: (d.meta.severity ?? 'medium') as Severity,
         feature: scalar(d.meta.feature),
+        rule: scalar(d.meta.rule),
+        priority: scalar(d.meta.priority),
+        reported: scalar(d.meta.reported),
+      }));
+    this.testCases = docs
+      .filter((d) => d.type === 'test-case')
+      .map((d) => ({
+        ...d,
+        feature: scalar(d.meta.feature),
+        covers: list(d.meta.covers),
+        priority: scalar(d.meta.priority),
+        automatedBy: scalar(d.meta.automated_by),
       }));
   }
 
@@ -75,6 +110,6 @@ export class Vault {
   }
 
   openDefects(featureId?: string): Defect[] {
-    return this.defects.filter((d) => d.status === 'open' && (!featureId || d.feature === featureId));
+    return this.defects.filter((d) => isOpen(d) && (!featureId || d.feature === featureId));
   }
 }

@@ -1,9 +1,9 @@
 /**
  * Builds the GitHub Pages landing page for one CI run: the release assessment
- * and traceability (rendered from their Markdown) plus a link to the full
+ * traceability and the defect triage board (rendered from their Markdown) plus a link to the full
  * Playwright HTML report.
  *
- *   bun run scripts/site-index.ts <site dir>     expects release-gate.md, traceability.md, report/
+ *   bun run scripts/site-index.ts <site dir>     expects release-gate.md, traceability.md, triage.md, report/
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -38,6 +38,7 @@ const html = `<!doctype html>
 <a class="cta" href="report/index.html">Open the Playwright report →</a>
 ${await section('release-gate.md')}
 ${await section('traceability.md')}
+${await section('triage.md')}
 </main></body></html>
 `;
 writeFileSync(join(site, 'index.html'), html);

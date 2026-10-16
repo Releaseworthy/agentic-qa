@@ -71,6 +71,9 @@ jobs:
         run: bun run rag:build
       - name: Evaluate retrieval (vector vs graph vs hybrid)
         run: bun run rag:eval
+      - name: Knowledge gate tests (curation)
+        if: matrix.graph == 'local'
+        run: bun run rag:test
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
@@ -197,11 +200,13 @@ jobs:
       - name: Go/No-Go
         id: gate
         run: bun run qa:gate --results out/results.json
+      - name: Defect triage board
+        run: bun run qa:triage
       - name: Publish layout
         run: |
           mkdir -p site
           cp -r playwright-report site/report
-          cp out/release-gate.md out/traceability.md site/
+          cp out/release-gate.md out/traceability.md out/triage.md site/
           bun run scripts/site-index.ts site
       - uses: actions/upload-artifact@v4
         with:

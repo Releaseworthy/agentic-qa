@@ -11,15 +11,35 @@ frontmatter for structure, `[[ID]]` links for the graph. Indexed by `rag/`
 into ChromaDB (vector) and a knowledge graph (Neo4j or local), and served
 over MCP (`knowledge` server).
 
-| Folder        | `type`      | What                                                                |
-| ------------- | ----------- | ------------------------------------------------------------------- |
-| `product/`    | `overview`  | What ShopLite is, who uses it, glossary                             |
-| `features/`   | `feature`   | One card per shipped feature: code, endpoints, pages, rules, risk   |
-| `rules/`      | `rule`      | One business rule each: statement, boundaries, error contract      |
-| `cards/`      | `card`      | Work items not built yet — input to AC refinement and test planning |
-| `defects/`    | `defect`    | Known defects with status and severity — input to the release gate  |
-| `test-cases/` | `test-case` | Manual test cases written by the UI QA workflow                     |
-| `learnings/`  | `learning`  | Lessons from human review, fed back by the `learn` workflow         |
+| Folder        | `type`      | What                                                                | Owner · how it changes                         |
+| ------------- | ----------- | ------------------------------------------------------------------- | ---------------------------------------------- |
+| `product/`    | `overview`  | What ShopLite is, who uses it, glossary                             | Product · proposal → human                     |
+| `features/`   | `feature`   | One card per shipped feature: code, endpoints, pages, rules, risk   | Product; agents may fix `code`/`endpoints`/`pages` |
+| `rules/`      | `rule`      | One business rule each: statement, boundaries, error contract      | Product · proposal → human                     |
+| `cards/`      | `card`      | Work items not built yet — input to AC refinement and test planning | Product · proposal → human                     |
+| `defects/`    | `defect`    | Defects with lifecycle, severity, priority — input to the gate      | QA · `upsert_document`, reviewed               |
+| `test-cases/` | `test-case` | The manual test suite: steps with exact labels and expected results | QA · `upsert_document`, reviewed               |
+| `learnings/`  | `learning`  | How to work here: conventions, pitfalls, tool quirks               | Agents · proposal → gate → judge               |
+| `_curation/`  | —           | `ledger.jsonl` (every knowledge decision) · `proposals/` (waiting for a human) | not indexed                    |
 
-Write through the `knowledge` MCP (`add_learning`, `upsert_document`) so the
-index stays in sync; a hand edit is picked up by `bun run rag:build`.
+## Lifecycles
+
+- **Defect** `status`: `new` → `confirmed` → `fixed` → `closed`, or `reopened` when the retest fails;
+  `rejected` with a `resolution` (`not-a-bug`, `duplicate`, `cannot-reproduce`, `wont-fix`). Anything not
+  closed or rejected counts as open for the release gate. Each change adds a line under `## History`.
+- **Test case** `status`: `draft` (written from rules, not yet walked) → `ready` (walked in the app) →
+  `obsolete`. `automated_by` names the spec › title, or `none`.
+- **Learning** `confidence`: `provisional` (an agent saw it once) → `established` (human evidence, or a
+  second independent source — `support` counts them). `status: deprecated` keeps it as history, unretrieved.
+
+## Self-improvement
+
+Every workflow ends with a reflection (`.claude/rules/self-improve.md`). A lesson worth keeping becomes a
+proposal: `propose_knowledge` runs a deterministic gate — shape, evidence, links, scope, ownership,
+novelty (no near-duplicate) and retrieval (the golden set must not regress on a throwaway index, and the
+proposal's probe question must find it) — then the `knowledge-curator` agent, which did not write it,
+scores it on five criteria, and `commit_knowledge` applies the result. Accepted probes join
+`rag/golden.learned.yaml`, so learned knowledge stays findable. `bun run kb:audit` lists stale,
+unconfirmed and duplicate learnings for `/learn --audit`.
+
+A hand edit is picked up by `bun run rag:build`.

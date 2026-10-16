@@ -52,7 +52,11 @@ const ALLOWED_TOOLS = [
   'Bash(git diff *)',
   'Bash(git status *)',
   'Bash(git log *)',
+  'Bash(TEST_ENV=* bunx playwright test *)',
+  'Bash(TEST_ENV=* bun run *)',
+  'Bash(git show *)',
   'Bash(gh pr view *)',
+  'Bash(gh pr diff *)',
   'Bash(gh api *)',
   // Read-only helpers agents chain onto the commands above (pipes are checked per command).
   'Bash(cd *)',
@@ -211,6 +215,9 @@ const summary = [
     ? structured.findings.map((f) => `- **${f.severity}** ${f.title}${f.ref ? ` (${f.ref})` : ''}`).join('\n')
     : '',
   structured?.artifacts.length ? `\nArtifacts: ${structured.artifacts.map((a) => `\`${a.path}\``).join(', ')}` : '',
+  structured?.knowledge?.length
+    ? `\nKnowledge: ${structured.knowledge.map((k) => `${k.id} ${k.decision}${k.why ? ` (${k.why})` : ''}`).join(' · ')}`
+    : '',
   '',
   `<sub>Models: ${models}</sub>`,
 ].join('\n');

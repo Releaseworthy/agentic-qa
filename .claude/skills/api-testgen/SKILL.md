@@ -17,6 +17,6 @@ Read `.claude/rules/orchestration.md` first.
 4. **Delegate** to `test-author`: the endpoint list, the case table with exact expected values and DOC-ids, the target spec file(s), the helpers to reuse, missing helpers to add. One `describe` per endpoint, tags `@FEAT-…` + `@BR-…`.
 5. **Review** with `test-reviewer` (≤ 2 rounds).
 6. A `PRODUCT_BUG` from the author → `qa-writer` writes the defect (`DEF-…`), the test stays `test.fail` with the id.
-7. Learnings from review → `add_learning`.
+7. **Reflect: `.claude/rules/self-improve.md`.**
 
 Final response: per endpoint the cases added (titles, tags), the run command and result, product bugs found (DEF ids), review verdict.

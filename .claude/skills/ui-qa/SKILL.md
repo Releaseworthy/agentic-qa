@@ -15,6 +15,6 @@ Read `.claude/rules/orchestration.md` and `.claude/rules/browser.md` first.
 5. **Manual cases**: `qa-writer` writes one `TC-…` per verified scenario, from the explorer's observed steps — never from expectations alone.
 6. **Automate**: `test-author` turns each manual case into a UI test (`tests/ui/<area>.spec.ts`) through page objects, adding page-object actions with the explorers' locators and the requests to wait for; `automated_by` on the case is updated via `upsert_document`.
 7. **Review**: `test-reviewer` on each case and the spec change (≤ 2 rounds each).
-8. **Learn**: reviewer corrections that will recur → `add_learning`.
+8. **Reflect: `.claude/rules/self-improve.md`.** Reviewer corrections that will recur are the first candidates.
 
 Final response: charters explored (session, result), defects filed (ids, severity), manual cases written, tests added (titles) with the run result, review verdicts, sessions closed.

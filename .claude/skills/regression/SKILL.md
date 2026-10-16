@@ -17,5 +17,6 @@ Read `.claude/rules/orchestration.md` first.
    - Unclear → `BLOCKED` with the evidence; never guess.
 4. **Re-run** only what changed: `--grep` on the fixed titles.
 5. **Assess**: `bun run qa:gate` → `out/release-gate.md`.
+6. **Reflect: `.claude/rules/self-improve.md`.** A flaky test → `/flaky-hunt`; a product bug → `/verify-bug` flow (`.claude/rules/bug-lifecycle.md`).
 
 Final response: selection (n of total, why), run command and totals, per failure: label (flaky / fixed / product bug / blocked) with root cause and files changed, defects filed, the gate decision.

@@ -5,6 +5,7 @@ title: A cart line cannot go above 10 units
 feature: FEAT-CART
 covers: [BR-CART-01]
 priority: high
+status: ready
 automated_by: tests/ui/cart.spec.ts › Cart › more than 10 units shows the limit
 ---
 

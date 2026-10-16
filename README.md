@@ -21,15 +21,33 @@ ChromaDB + Neo4j (Hybrid RAG, Python/uv) · LangSmith · ripgrep · GitHub Actio
 
 | QA activity              | Workflow (`/skill` in Claude Code, `bun run agent <name>` headless)                                 | Backed by                                                                                |
 | ------------------------ | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| **Plan**                 |                                                                                                     |                                                                                          |
 | Risk-based test planning | `qa-plan` — impacted areas ranked by risk, coverage, exit criteria                                  | `qa/impact.ts`, vault, code graph                                                        |
 | AC refinement            | `refine-ac CARD-142` — ambiguities, rule conflicts, Given/When/Then, questions for Product          | knowledge MCP · [example](docs/examples/refine-ac-CARD-142.md)                           |
+| **Manual testing**       |                                                                                                     |                                                                                          |
+| Test-case design         | `write-testcases BR-COUP-02` — boundaries, decision tables, state transitions; no duplicates        | `knowledge/test-cases/` (16 cases)                                                       |
+| Manual execution         | `run-testcases FEAT-CART` — follows each case step by step in the app, verdict + evidence per step  | `manual-tester` ×N, `qa/manual-runs.ts` → trace and gate                                 |
+| Manual → automated       | `automate-tc --unautomated` — case steps become named `test.step`s, `automated_by` linked           | page objects, `seed`                                                                     |
+| **Automated testing**    |                                                                                                     |                                                                                          |
 | Endpoint API tests       | `api-testgen "PATCH /api/cart/items/:productId"` — positive + negative per endpoint                 | API helpers, `seed`, rule boundaries                                                     |
 | API journey tests        | `api-journey-testgen "two customers race for the last units"` — chained calls, final business state | `tests/api/journeys/`                                                                    |
 | Post-dev UI QA           | `ui-qa FEAT-CART` — explore in parallel sessions, defects, manual cases, then Playwright specs      | `playwright-cli`, page objects                                                           |
 | Ad hoc testing           | `adhoc-test "<charter>" [--defects]` — unscripted, evidence, minimal repro                          | `seed:session`, `playwright-cli` · [example](docs/examples/adhoc-test-seeded-defects.md) |
+| **Bugs**                 |                                                                                                     |                                                                                          |
+| Bug verification         | `verify-bug DEF-007` — API repro script + UI repro, layer, verdict, pinned by a `test.fail` test    | `out/bugs/<id>/`, `playwright-cli`                                                       |
+| Bug triage               | `bug-triage --open` — verify, dedupe, severity, priority, suspect code, decision                    | `qa/defects.ts` (`qa:triage`)                                                            |
+| Retest after a fix       | `retest-bug DEF-007` — repro again, pinning test → regression test, close or reopen                 | `qa/impact.ts`                                                                           |
+| **Maintenance**          |                                                                                                     |                                                                                          |
 | Impact-based regression  | `regression --base origin/main` — select, run, triage flaky / test defect / product bug             | `qa/impact.ts` · [example](docs/examples/impact-pricing-change.md)                       |
+| Flaky tests              | `flaky-hunt` — `--repeat-each` without retries, rate per test, root cause, fix, prove               | `qa/flaky.ts` (`qa:flaky`)                                                               |
+| Self-healing tests       | `heal-tests --card CARD-157` — intended change vs regression, heal page objects first               | `ui-explorer`, vault cards                                                               |
+| **Release**              |                                                                                                     |                                                                                          |
+| Post-deploy smoke        | `smoke-check --env staging` — health, `@smoke`, critical pages by eye, PASS/FAIL                    | env profiles, saved accounts                                                             |
+| Test summary report      | `test-report --period sprint` — execution, coverage, defects, risks for stakeholders                | every `qa:*` report                                                                      |
 | Go/No-Go                 | `release-gate` — blockers, residual risks, sign-off                                                 | `qa/release-gate.ts` · [example](docs/examples/release-gate.md)                          |
-| Learning loop            | `learn <PR#>` — review comments become vault learnings future runs follow                           | `add_learning`                                                                           |
+| **Self-improvement**     |                                                                                                     |                                                                                          |
+| Reflection, every run    | the last step of every workflow — lessons proposed, gated, judged by another agent                  | `propose_knowledge` → `knowledge-curator` → `commit_knowledge`                           |
+| Learning from humans     | `learn <PR#>` / `learn --audit` — review comments and human edits to agent PRs; stale lessons       | runs on every merged PR                                                                  |
 
 ```mermaid
 flowchart LR
@@ -40,14 +58,20 @@ flowchart LR
     O --> TA["test-author<br/>(opus)"]
     O --> TR["test-reviewer<br/>(opus)"]
     O --> QW["qa-writer<br/>(sonnet)"]
+    O --> MT["manual-tester ×N<br/>(haiku, own browser each)"]
+    O --> KC["knowledge-curator<br/>(sonnet, independent judge)"]
   end
   KS -->|MCP| RAG["knowledge MCP<br/>ChromaDB + Neo4j graph"]
   CS -->|MCP| CODE["codesearch MCP<br/>ripgrep + import graph"]
   UX -->|playwright-cli| APP["ShopLite<br/>(system under test)"]
+  MT -->|playwright-cli| APP
   TA --> FW["Playwright framework<br/>API helpers · seed · page objects"]
   FW --> APP
-  O --> ENG["QA engines<br/>impact · traceability · gate · defect detection"]
-  QW -->|MCP writes| RAG
+  O --> ENG["QA engines<br/>impact · traceability · gate · triage · manual runs · flakiness"]
+  QW -->|test cases, defects| RAG
+  O -->|propose_knowledge| GATE["knowledge gate<br/>evidence · novelty · retrieval regression"]
+  KC -->|commit_knowledge| GATE
+  GATE -->|accepted| RAG
 ```
 
 ## Quick start
@@ -68,19 +92,24 @@ On bash: `export STRING_HEX_SHOPLITE=b4a8856ed96c7f3dbf79c4cd155bb59f59877615922
 > accounts belong to a demo shop that runs on your machine; a real project keeps it in a secret store — CI reads it
 > from the `STRING_HEX_SHOPLITE` repository secret.
 
-| Command                                               | Does                                                            |
-| ----------------------------------------------------- | --------------------------------------------------------------- |
-| `bun run test:all` / `test:smoke` / `test:unit`       | All browsers / critical path / QA-engine unit tests             |
-| `bun run test:staging` / `test:live`                  | The suite against staging / the `@readonly` tests against live  |
-| `bun run qa:impact [--base <ref> \| --files <paths>]` | Change → impacted features, risk, the `--grep` to run           |
-| `bun run qa:trace`                                    | Feature/rule ↔ tests ↔ manual cases ↔ defects                   |
-| `bun run qa:gate`                                     | Go/No-Go from `out/results.json`                                |
-| `bun run qa:defects`                                  | Runs the suite once per seeded defect; fails if one survives    |
-| `bun run rag:build` / `rag:eval` / `rag:serve`        | Index the vault / evaluate retrieval / MCP over HTTP            |
-| `bun run codesearch "apply coupon"`                   | Hybrid code search (also `--symbol`, `--related`, `--helpers`)  |
-| `bun run seed:session --name s1 --cart 2`             | Seed data over the API + a signed-in state for `playwright-cli` |
-| `'secret' \| bun run crypto encrypt`                  | An `enc1.…` token for `env/` (`keygen`, `decrypt` too)          |
-| `bun run agent <workflow> [args]`                     | Run a workflow headless (`bun run agent list`)                  |
+| Command                                               | Does                                                                   |
+| ----------------------------------------------------- | ---------------------------------------------------------------------- |
+| `bun run test:all` / `test:smoke` / `test:unit`       | All browsers / critical path / QA-engine unit tests                    |
+| `bun run test:staging` / `test:live`                  | The suite against staging / the `@readonly` tests against live         |
+| `bun run qa:impact [--base <ref> \| --files <paths>]` | Change → impacted features, risk, the `--grep` to run                  |
+| `bun run qa:trace`                                    | Feature/rule ↔ tests ↔ manual cases ↔ defects                          |
+| `bun run qa:gate`                                     | Go/No-Go from `out/results.json`                                       |
+| `bun run qa:defects`                                  | Runs the suite once per seeded defect; fails if one survives           |
+| `bun run qa:triage [DEF-… \| --all]`                  | Defect board: suggested priority, blockers, duplicates, age, next step |
+| `bun run qa:manual [--check <run.json>]`              | Manual suite progress from `out/manual-runs/`; validates a run record  |
+| `bun run qa:flaky`                                    | Flake rate per test from a `--repeat-each` run                         |
+| `bun run kb:audit` / `kb:evaluate <proposal.json>`    | Stale/duplicate/unconfirmed learnings / the knowledge gate, dry run    |
+| `bun run rag:test`                                    | Knowledge-gate tests (pytest)                                          |
+| `bun run rag:build` / `rag:eval` / `rag:serve`        | Index the vault / evaluate retrieval / MCP over HTTP                   |
+| `bun run codesearch "apply coupon"`                   | Hybrid code search (also `--symbol`, `--related`, `--helpers`)         |
+| `bun run seed:session --name s1 --cart 2`             | Seed data over the API + a signed-in state for `playwright-cli`        |
+| `'secret' \| bun run crypto encrypt`                  | An `enc1.…` token for `env/` (`keygen`, `decrypt` too)                 |
+| `bun run agent <workflow> [args]`                     | Run a workflow headless (`bun run agent list`)                         |
 
 Agents need Claude credentials: a Claude Code login locally, or `ANTHROPIC_API_KEY` / `CLAUDE_CODE_OAUTH_TOKEN`
 in CI. Interactively, open the repo in Claude Code and type `/refine-ac CARD-142`.
@@ -92,14 +121,16 @@ in CI. Interactively, open the repo in Claude Code and type `/refine-ac CARD-142
 Each workflow is a **skill** (`.claude/skills/*/SKILL.md`). The skill coordinates and hands the work to **subagents**
 (`.claude/agents/*.md`). Each subagent has its own context window and only the tools it needs:
 
-| Subagent          | Model  | Does                                                                                      |
-| ----------------- | ------ | ----------------------------------------------------------------------------------------- |
-| `knowledge-scout` | haiku  | Business facts with document ids, from the knowledge MCP                                  |
-| `code-scout`      | haiku  | Existing helpers, page objects and fixtures to reuse                                      |
-| `ui-explorer`     | haiku  | Drives its own headless `playwright-cli` session, records labels, network calls, evidence |
-| `test-author`     | opus   | Writes specs and page objects, validates with a focused run, typecheck and lint           |
-| `test-reviewer`   | opus   | Read-only verdict, PASS / NEEDS_REVISION, at most 2 revision rounds                       |
-| `qa-writer`       | sonnet | Manual test cases and defect reports, written into the vault                              |
+| Subagent            | Model  | Does                                                                                      |
+| ------------------- | ------ | ----------------------------------------------------------------------------------------- |
+| `knowledge-scout`   | haiku  | Business facts with document ids, from the knowledge MCP                                  |
+| `code-scout`        | haiku  | Existing helpers, page objects and fixtures to reuse                                      |
+| `ui-explorer`       | haiku  | Drives its own headless `playwright-cli` session, records labels, network calls, evidence |
+| `test-author`       | opus   | Writes specs and page objects, validates with a focused run, typecheck and lint           |
+| `test-reviewer`     | opus   | Read-only verdict, PASS / NEEDS_REVISION, at most 2 revision rounds                       |
+| `qa-writer`         | sonnet | Manual test cases and defect reports with their lifecycle, written into the vault         |
+| `manual-tester`     | haiku  | Follows a manual test case step by step in its own browser, verdict + evidence per step   |
+| `knowledge-curator` | sonnet | Independent judge of knowledge proposals: scores them on 5 criteria, commits the verdict  |
 
 Lookups and browser exploration run on the light model. Orchestration, authoring and review run on the strongest.
 Independent explorers run in parallel, each with its own seeded data and browser session. Project rules live in
@@ -126,7 +157,8 @@ rules, work-item cards, defects, manual test cases and review learnings. `rag/` 
   `PART_OF`, `COVERS`, `IMPLEMENTED_IN`, `EXPOSES`, `VERIFIES` (from test tags) and `LINKS_TO`. It lives in **Neo4j**
   when `NEO4J_URI` is set, otherwise in memory.
 - **Hybrid search:** vector hits, graph neighbours of the ids the query names and of the top hits, and query intent,
-  fused with reciprocal-rank fusion.
+  fused with reciprocal-rank fusion. Test cases restate their rules, so they rank below them unless the question asks
+  for test cases — adding 14 cases had dropped MRR to 0.773 until this prior went in.
 
 On a 22-question golden set (`rag/golden.yaml`), `bun run rag:eval` compares the three modes, and CI fails if hybrid
 regresses. With `LANGSMITH_API_KEY` set, the run is logged to **LangSmith** as an experiment, and `--answers` adds
@@ -134,12 +166,13 @@ answer quality: Claude answers from the retrieved context only, and an LLM judge
 
 | Mode       | hit@1     | hit@5   | MRR       |
 | ---------- | --------- | ------- | --------- |
-| vector     | 0.591     | 1.0     | 0.769     |
-| graph      | 0.455     | 0.727   | 0.577     |
-| **hybrid** | **0.727** | **1.0** | **0.845** |
+| vector     | 0.636     | 1.0     | 0.784     |
+| graph      | 0.455     | 0.727   | 0.591     |
+| **hybrid** | **0.727** | **1.0** | **0.856** |
 
 The **knowledge MCP server** (`rag/server.py`) exposes `search_knowledge`, `get_document`, `related`,
-`list_documents`, `upsert_document` and `add_learning`. Every write re-indexes in the same call. It runs over stdio for
+`list_documents`, `upsert_document` (test cases and defects), `propose_knowledge`, `commit_knowledge` and `audit_knowledge`.
+Every write re-indexes in the same call. It runs over stdio for
 agents, or as a shared HTTP endpoint other teams' AI tools connect to:
 
 ```bash
@@ -156,6 +189,42 @@ az containerapp create -n knowledge-mcp -g <rg> --environment <env> \
 The endpoint has no auth of its own. Keep it on an internal network, or turn on Container Apps authentication
 (Entra ID) in front of it.
 
+### Self-improving knowledge
+
+Every workflow ends with a **reflection** (`.claude/rules/self-improve.md`): reviewer revisions, fix-and-rerun
+rounds, facts the vault lacked, tool pitfalls and human corrections become at most three candidate lessons. None
+reaches the vault unchecked:
+
+```mermaid
+flowchart LR
+  R["reflection<br/>(any workflow)"] --> P["propose_knowledge"]
+  H["learn &lt;PR&gt;<br/>comments · human edits to agent PRs"] --> P
+  P --> G{"gate<br/>deterministic"}
+  G -->|fail| X["rejected<br/>(ledger)"]
+  G -->|pass| J{"knowledge-curator<br/>5 criteria, 1–5"}
+  G -->|Product-owned| HU["_curation/proposals<br/>for a human"]
+  J -->|"min ≥ 3, mean ≥ 4"| A["accepted → vault<br/>probe → golden set"]
+  J -->|below the bar| X
+```
+
+| Gate check | Fails when                                                                                                     |
+| ---------- | -------------------------------------------------------------------------------------------------------------- |
+| shape      | no probe question, over 1,500 characters, or it reads as a run log ("this run", "I tried") instead of guidance |
+| evidence   | none, or a cited file does not exist                                                                           |
+| links      | a `[[link]]` points at nothing                                                                                 |
+| scope      | `applies_to` matches no file                                                                                   |
+| ownership  | rules, cards, the overview and feature behaviour belong to Product → filed for a human, never written          |
+| novelty    | an `add` is ≥ 0.65 cosine-similar to an existing document → must be an `update` of it                          |
+| retrieval  | on a throwaway index, a golden question loses its answer, MRR drops > 0.02, or the probe misses the document   |
+
+The judge is a different agent from the proposer and scores **grounded, reusable, actionable, scoped,
+consistent**; `commit_knowledge` enforces the bar, so a failed gate can't be overruled. Learnings carry provenance:
+`confidence: provisional` until human evidence or a second independent source (`support: 2`) makes them
+`established`. Accepted probes join `rag/golden.learned.yaml`, so a later change can't make learned knowledge
+unfindable. Every decision is a line in `knowledge/_curation/ledger.jsonl`. `learn --audit` (`bun run kb:audit`)
+re-validates what's there: stale scopes, unconfirmed lessons after 60 days, near-duplicates. On every merged PR, CI
+runs `learn <PR>` and opens a PR with what was accepted.
+
 ### Hybrid code search
 
 The `codesearch` MCP (`codesearch/`) combines **ripgrep** text hits, ranked by term rarity, with an **import and
@@ -170,13 +239,19 @@ The agents call these engines instead of deciding by feel. All of them are unit-
   A changed rule maps to its feature. A framework change maps to the specs that use its classes, fixtures or
   properties. Risk = criticality × impact weight × change size × open defects. The output is the `--grep` CI runs on
   pull requests.
-- **Traceability.** Each feature and rule is matched to its tagged tests, manual cases and open defects, and untested
-  rules are flagged.
-- **Release gate.** NO-GO on a failure in a critical area, an open critical or high defect, an untested critical rule,
-  or a pass rate under 95 %. CONDITIONAL GO when only residual risks remain, each listed with its mitigation.
+- **Traceability.** Each feature and rule is matched to its tagged tests, its manual cases with their latest manual
+  result, and open defects. Rules nothing verifies, and rules only a manual run verifies, are flagged.
+- **Release gate.** NO-GO on a failure (automated or manual) in a critical area, an open critical or high defect (a fix
+  nobody retested is still open), a critical rule with neither a test nor a passing manual run, or a pass rate under 95 %. CONDITIONAL GO when only residual risks remain, each listed with its mitigation.
   Otherwise GO.
 - **Seeded-defect detection.** Mutation-style: ShopLite starts once per seeded defect, the suite runs against it, and
   a test tagged with the broken rule must fail. [4 of 4 defects caught](docs/examples/defect-detection.md).
+- **Defect triage.** Priority = severity × feature criticality (a fixed matrix), release blockers, duplicate candidates
+  (same rule, or same feature and a similar title), age, the `@DEF` test that pins it, and the next lifecycle step.
+  Metrics: open by severity and feature, which technique finds the bugs, mean open age, reopen count.
+- **Manual runs.** A zod-validated record per manual execution (a case's result must agree with its steps; a failure
+  names its defect); the latest result per case feeds traceability and the gate.
+- **Flakiness.** From a `--repeat-each` run without retries: failure rate per test and project, stable / flaky / broken.
 
 ### Playwright framework
 
@@ -236,13 +311,16 @@ its own.
 ├─ framework/           api/ (helpers + zod schemas) · auth/ (accounts, storage states) · config/ (env, paths,
 │                       timeouts) · data/ · pages/ · setup/ (seed, app launcher, seed:session CLI) ·
 │                       utils/ (date, step, crypto) · fixtures
-├─ tests/               api/endpoints · api/journeys · ui · unit (QA engines)
-├─ knowledge/           vault: product, features, rules, cards, defects, test-cases, learnings
-├─ rag/                 Hybrid RAG (Python/uv): vault loader, ChromaDB, graph (local/Neo4j), fusion, MCP server, eval, Dockerfile
+├─ tests/               api/endpoints · api/journeys · ui · unit (QA engines) · rag (knowledge gate, pytest)
+├─ knowledge/           vault: product, features, rules, cards, defects, test-cases, learnings ·
+│                       _curation/ (decision ledger, proposals waiting for a human)
+├─ rag/                 Hybrid RAG (Python/uv): vault loader, ChromaDB, graph (local/Neo4j), fusion, MCP server,
+│                       eval (+ learned probes), knowledge gate (curate.py), Dockerfile
 ├─ codesearch/          ripgrep + import/symbol graph, CLI and MCP server
-├─ qa/                  impact · traceability · release gate · seeded-defect detection
+├─ qa/                  impact · traceability · release gate · seeded-defect detection · defect triage ·
+│                       manual runs · flakiness
 ├─ agents/              Claude Agent SDK runner and workflow registry
-├─ .claude/             skills/ (9 workflows) · agents/ (6 subagents) · rules/ · settings.json
+├─ .claude/             skills/ (19 workflows) · agents/ (8 subagents) · rules/ · settings.json
 ├─ docs/examples/       outputs of real runs
 ├─ scripts/             crypto CLI (encrypt / decrypt / keygen), GitHub Pages landing page
 ├─ .github/             CI workflows, setup action
@@ -253,7 +331,7 @@ its own.
 └─ playwright.config.ts projects api · chromium · firefox · webkit; starts ShopLite
 ```
 
-Generated and gitignored: `out/` (reports, plans, agent runs), `.auth/` (storage states), `.rag/` (index),
+Generated and gitignored: `out/` (reports, plans, agent runs, manual runs, bug evidence), `.auth/` (storage states), `.rag/` (index),
 Playwright output.
 
 ## License

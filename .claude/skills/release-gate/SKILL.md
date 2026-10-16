@@ -15,6 +15,9 @@ argument-hint: "[--results <path>] [--release <name>]"
 3. **Ask `knowledge-scout`** only for context the reports lack (what a defect affects, what a feature's criticality means).
 4. **Write** `out/release/<release or date>.md`: decision (as the engine says), summary for a non-technical reader, blockers, risks with mitigations, evidence links (report paths, test counts), sign-off checklist.
 
+5. **Manual and defect evidence:** `bun run qa:manual` and `bun run qa:triage` — manual-only rules and unretested fixes are residual risks the engine already counts.
+6. **Reflect: `.claude/rules/self-improve.md`.**
+
 Never turn a NO-GO into a GO. If you believe the rules misjudge a case, say so under "Reviewer note" — the human decides.
 
 Final response: the decision, blockers and required mitigations, the report path.

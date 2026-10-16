@@ -9,11 +9,14 @@ import time
 
 from rag.config import GRAPH_FILE, NEO4J_URI
 from rag.graph import LocalGraph, Neo4jGraph, build
-from rag.vault import Document, chunk, load_vault
+from rag.vault import Document, chunk, is_active, load_vault
 from rag.vector import VectorStore
 
 
 def index_document(doc: Document, vector: VectorStore) -> int:
+    if not is_active(doc):
+        vector.delete_doc(doc.id)
+        return 0
     chunks = chunk(doc)
     vector.upsert(doc, chunks)
     return len(chunks)

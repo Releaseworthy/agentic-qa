@@ -5,11 +5,12 @@
  *
  *   bun run qa:gate                                    from out/results.json
  *   bun run qa:gate --results merged.json --strict     exit 1 on NO-GO
+ *   --manual <dir>                                     manual runs (default out/manual-runs/)
  *
  * NO-GO when any of:
- *   - a test fails on a feature of criticality ≥ 4, or on a critical/high rule;
- *   - an open defect is critical or high;
- *   - a critical rule has no automated test;
+ *   - a test or a manual case fails on a feature of criticality ≥ 4, or on a critical/high rule;
+ *   - an open defect is critical or high (open = not closed or rejected; a fix nobody retested is open);
+ *   - a critical rule has neither an automated test nor a passing manual run;
  *   - the pass rate is below 95 %.
  * CONDITIONAL GO when there are other failures, flaky tests, open medium/low
  * defects, or untested non-critical rules — each listed as a residual risk
@@ -17,6 +18,7 @@
  */
 
 import { parseArgs } from 'node:util';
+import { latestResults, readRuns, type ManualResult } from '@qa/manual-runs';
 import { table, setOutputs, writeReport } from '@qa/report';
 import { listTests, readResults, traceTags, type TestRecord } from '@qa/tests-catalog';
 import { trace } from '@qa/traceability';
@@ -54,7 +56,12 @@ export type GateReport = {
 const MIN_PASS_RATE = 0.95;
 
 /** `catalog`: every test the suite defines — coverage is judged on it, so an impact-selected run doesn't read as missing tests. */
-export function assess(vault: Vault, results: TestRecord[], catalog: TestRecord[] = results): GateReport {
+export function assess(
+  vault: Vault,
+  results: TestRecord[],
+  catalog: TestRecord[] = results,
+  manual: ManualResult[] = [],
+): GateReport {
   const ran = results.filter((t) => t.status !== 'listed');
   const failed = ran.filter((t) => t.status === 'unexpected');
   const flaky = ran.filter((t) => t.status === 'flaky');
@@ -90,13 +97,28 @@ export function assess(vault: Vault, results: TestRecord[], catalog: TestRecord[
     else risk(msg, 'Release note / known issue; schedule the fix');
   }
 
-  const coverage = trace(vault, catalog);
+  const coverage = trace(vault, catalog, manual);
   for (const id of coverage.untestedRules) {
     const sev = vault.rule(id)?.severity ?? 'medium';
-    const msg = `Rule ${id} (${sev}) has no automated test`;
+    const msg = `Rule ${id} (${sev}) has no automated test and no passing manual run`;
     if (sev === 'critical')
-      blocker(msg, 'Add an automated test (api-testgen workflow) or run its manual case and record the result');
+      blocker(msg, 'Add an automated test (api-testgen / automate-tc) or run its manual case (run-testcases)');
     else risk(msg, 'Cover it with an automated test, or run its manual case before release');
+  }
+  for (const id of coverage.manualOnlyRules)
+    risk(`Rule ${id} is verified only by a manual run`, 'Automate its manual case (automate-tc)');
+
+  for (const r of manual.filter((m) => m.result === 'failed' || m.result === 'blocked')) {
+    const tc = vault.testCases.find((c) => c.id === r.id);
+    const ids = [tc?.feature ?? '', ...(tc?.covers ?? [])];
+    const critical =
+      r.result === 'failed' &&
+      ids.some(
+        (id) => (vault.feature(id)?.criticality ?? 0) >= 4 || SEVERITY_RANK[vault.rule(id)?.severity ?? 'low'] >= 3,
+      );
+    const msg = `Manual case ${r.id} ${r.result} (${r.runId})${r.defects.length ? ` — ${r.defects.join(', ')}` : ''}`;
+    if (critical) blocker(msg, 'Fix and retest (retest-bug), or update the case if it is out of date');
+    else risk(msg, r.result === 'blocked' ? 'Unblock and run it' : 'Triage the failure (bug-triage)');
   }
   if (executed && passRate < MIN_PASS_RATE)
     blocker(
@@ -193,11 +215,12 @@ export function toMarkdown(r: GateReport): string {
 if (import.meta.main) {
   const { values } = parseArgs({
     args: Bun.argv.slice(2),
-    options: { results: { type: 'string' }, strict: { type: 'boolean' } },
+    options: { results: { type: 'string' }, manual: { type: 'string' }, strict: { type: 'boolean' } },
   });
   const results = readResults(values.results);
   const projects = [...new Set(results.map((t) => t.project))];
-  const report = assess(new Vault(), results, listTests(projects.length ? projects : undefined));
+  const manual = latestResults(readRuns(values.manual));
+  const report = assess(new Vault(), results, listTests(projects.length ? projects : undefined), manual);
   const md = toMarkdown(report);
   writeReport('release-gate', report, md);
   setOutputs({ decision: report.decision });
