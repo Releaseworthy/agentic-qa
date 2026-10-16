@@ -7,13 +7,14 @@ covers: [BR-CART-02]
 priority: high
 status: ready
 automated_by: tests/ui/catalog.spec.ts › Catalog › an out-of-stock product cannot be added
+setup: { recipe: product, priceCents: 1500, stock: 0 }
 ---
 
 # TC-CAT-002 — An out-of-stock product cannot be added to the cart
 
 ## Preconditions
 
-- A product with stock 0, created over the API: `bun run seed:session --name <session> --product 1500:0`.
+- A product with stock 0: `bun run qa:arrange --case TC-CAT-002 --name <session>` — its page is `#/product/<data.product.id>`.
 
 ## Steps
 

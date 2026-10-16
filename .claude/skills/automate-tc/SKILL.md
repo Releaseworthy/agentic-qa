@@ -17,7 +17,7 @@ Read `.claude/rules/orchestration.md` first.
    result is a rule outcome (then the UI case stays manual-only or keeps a thin UI check). Write the mapping down:
    case step → `test.step` title → page-object call → assertion with its message.
 4. **Delegate** to `test-author`: one test per case, titled like the case, tagged `@FEAT`/`@BR` from `covers`,
-   preconditions via `seed`/fixtures, each case step a `test.step` named after it, every assertion carrying the
+   the case's `setup` as the Given step via the `arrange` fixture (`await arrange('<recipe>', { …params })` — the same state the manual run arranges; with `account: Account.NEW_CUSTOMER` it belongs to the signed-in customer), each case step a `test.step` named after it, every assertion carrying the
    expected result as its message. Validate with `--grep`, typecheck, lint.
 5. **Review:** `test-reviewer` (≤ 2 rounds). `PRODUCT_BUG` → `qa-writer` defect, test stays `test.fail` with the id.
 6. **Link:** `qa-writer` sets each case's `automated_by` to `<spec> › <describe> › <title>`.

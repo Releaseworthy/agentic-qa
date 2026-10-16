@@ -7,13 +7,14 @@ covers: [BR-COUP-03]
 priority: medium
 status: ready
 automated_by: tests/ui/cart.spec.ts › Cart › an expired coupon is refused
+setup: { recipe: cart, priceCents: 4000, stock: 10, quantity: 1 }
 ---
 
 # TC-COUP-003 — An expired coupon is refused
 
 ## Preconditions
 
-- A signed-in customer with a $40.00 product in the cart: `bun run seed:session --name <session> --product 4000:10 --cart 1`.
+- A signed-in customer with a $40.00 product in the cart: `bun run qa:arrange --case TC-COUP-003 --name <session>`.
 
 ## Steps
 

@@ -3,7 +3,7 @@
  * environment's deployment: its port from BASE_URL, its environment name, test
  * hooks on or off, and the saved accounts it knows, decrypted here and handed
  * over the way a deployment injects its secrets. Playwright's webServer,
- * `bun run app` and `seed:session` all start the app through this.
+ * `bun run app` and `qa:arrange` all start the app through this.
  *
  *   bun run app                        dev       http://localhost:3100
  *   TEST_ENV=staging bun run app       staging   http://localhost:3200

@@ -6,13 +6,13 @@ argument-hint: "[<grep> | --from-results <path>] [--repeat <n>]"
 
 # Flaky test hunt
 
-Read `.claude/rules/orchestration.md` first.
+Read `.claude/rules/orchestration.md` and `.claude/rules/failure-triage.md` first.
 
 1. **Suspects:** the grep given; or tests marked `flaky` in `--from-results` (default `out/results.json`); or the
    whole `api`+`chromium` suite when nothing is given.
 2. **Measure:** `bunx playwright test --project=api --project=chromium --grep "<suspects>" --repeat-each=<n> --retries=0 --workers=4`
    (default n = 10; split into several runs if one would pass 90 s per test file), then `bun run qa:flaky` →
-   `out/stability.md`. `broken` (fails every run) is not flaky — hand it to `/regression` triage.
+   `out/stability.md`. `broken` (fails every run) is not flaky — classify it (`.claude/rules/failure-triage.md`), never "stabilise" it.
 3. **Root cause** per flaky test — from the error lines, the trace (`bunx playwright show-trace <zip>`), and the app:
    | Symptom | Usual cause |
    | --- | --- |
@@ -23,7 +23,7 @@ Read `.claude/rules/orchestration.md` first.
    | only on one browser | timing or a browser difference: reproduce with `--project=<browser>` |
    Confirm the cause before fixing (e.g. rerun with `--workers=1`: if it becomes stable, it was shared data).
 4. **Fix:** `test-author` fixes the test or the framework (page-object wait, own data, isolation) — never a timeout,
-   `waitForTimeout`, retry or skip. `test-reviewer` reviews.
+   `waitForTimeout`, retry, skip or a looser assertion; `bun run qa:heal-guard` passes. `test-reviewer` reviews.
 5. **Prove:** the same repeated run on the fixed tests: 0 failures in n runs. Still flaky after 2 rounds → `BLOCKED`
    with the evidence; an app-side race (the product misbehaves under concurrency) → `PRODUCT_BUG` → `qa-writer`.
 6. **Reflect:** `.claude/rules/self-improve.md` — a new flake pattern is exactly what the vault should learn.

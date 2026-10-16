@@ -7,14 +7,14 @@ covers: [BR-ORD-01, BR-ORD-02]
 priority: high
 status: ready
 automated_by: none
+setup: { recipe: order, priceCents: 1000, stock: 5, quantity: 1 }
 ---
 
 # TC-ORD-001 — Cancelling a placed order puts its items back in stock
 
 ## Preconditions
 
-- A signed-in customer with a placed order of 1 unit of a product with stock 5 (4 left after the order):
-  `bun run seed:session --name <session> --product 1000:5 --order`.
+- A signed-in customer with a placed order of 1 unit of a product with stock 5 (4 left after the order): `bun run qa:arrange --case TC-ORD-001 --name <session>`.
 
 ## Steps
 

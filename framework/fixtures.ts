@@ -9,6 +9,7 @@ import { CheckoutPage } from '@pages/checkout-page';
 import { Header } from '@pages/header';
 import { OrderPage, OrdersPage } from '@pages/order-pages';
 import { ProductPage } from '@pages/product-page';
+import { arrange, type Arranged, type RecipeId, type RecipeParams } from '@setup/recipes';
 import { Seed } from '@setup/seed';
 
 type Options = {
@@ -24,6 +25,11 @@ type Fixtures = {
   api: Api;
   /** Test-data setup over the API (fresh customers, products, coupons, orders). Refused on read-only envs. */
   seed: Seed;
+  /**
+   * A named start state (framework/setup/recipes.ts) — the same one a manual run arranges with
+   * un run qa:arrange --case TC-…. It belongs to the signed-in customer when ccount is NEW_CUSTOMER.
+   */
+  arrange: <K extends RecipeId>(id: K, params?: RecipeParams<K>) => Promise<Arranged>;
   /** A customer registered for this test only — the signed-in one when `account` is NEW_CUSTOMER. */
   customer: Customer;
   /** The session the browser is signed in with. Throws for GUEST. */
@@ -64,6 +70,8 @@ export const test = base.extend<Options & Fixtures & Internal>({
 
   api: async ({ request }, use) => use(new Api(request)),
   seed: async ({ request }, use) => use(new Seed(request)),
+  arrange: async ({ request, _session }, use) =>
+    use((id, params) => arrange(request, id, params, isCustomer(_session) ? _session : undefined)),
 
   header: async ({ page }, use) => use(new Header(page)),
   loginPage: async ({ page }, use) => use(new LoginPage(page)),

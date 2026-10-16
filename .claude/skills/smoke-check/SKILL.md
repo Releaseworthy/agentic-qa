@@ -8,8 +8,8 @@ argument-hint: "[--env <name>]"
 
 Read `.claude/rules/browser.md` first. Default env `staging`. Nothing here writes data on live.
 
-1. **Identity:** `TEST_ENV=<env> bun run seed:session --name smoke-<env> --account returning-customer` — it
-   checks `/health` and signs in the saved account. A health answer from another
+1. **Identity:** `TEST_ENV=<env> bun run qa:arrange returning-customer --name smoke-<env>` — the framework recipe that
+   checks `/health`, signs in the saved account and creates nothing. A health answer from another
    environment, or no answer → FAIL, stop.
 2. **Automated smoke:** `TEST_ENV=<env> bunx playwright test --project=api --project=chromium --grep @smoke`
    (`--grep @readonly` on live), `--retries=1`. Results in `out/results.json`.

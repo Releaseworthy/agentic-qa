@@ -19,35 +19,36 @@ ChromaDB + Neo4j (Hybrid RAG, Python/uv) · LangSmith · ripgrep · GitHub Actio
 
 ## What it does
 
-| QA activity              | Workflow (`/skill` in Claude Code, `bun run agent <name>` headless)                                 | Backed by                                                                                |
-| ------------------------ | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| **Plan**                 |                                                                                                     |                                                                                          |
-| Risk-based test planning | `qa-plan` — impacted areas ranked by risk, coverage, exit criteria                                  | `qa/impact.ts`, vault, code graph                                                        |
-| AC refinement            | `refine-ac CARD-142` — ambiguities, rule conflicts, Given/When/Then, questions for Product          | knowledge MCP · [example](docs/examples/refine-ac-CARD-142.md)                           |
-| **Manual testing**       |                                                                                                     |                                                                                          |
-| Test-case design         | `write-testcases BR-COUP-02` — boundaries, decision tables, state transitions; no duplicates        | `knowledge/test-cases/` (16 cases)                                                       |
-| Manual execution         | `run-testcases FEAT-CART` — follows each case step by step in the app, verdict + evidence per step  | `manual-tester` ×N, `qa/manual-runs.ts` → trace and gate                                 |
-| Manual → automated       | `automate-tc --unautomated` — case steps become named `test.step`s, `automated_by` linked           | page objects, `seed`                                                                     |
-| **Automated testing**    |                                                                                                     |                                                                                          |
-| Endpoint API tests       | `api-testgen "PATCH /api/cart/items/:productId"` — positive + negative per endpoint                 | API helpers, `seed`, rule boundaries                                                     |
-| API journey tests        | `api-journey-testgen "two customers race for the last units"` — chained calls, final business state | `tests/api/journeys/`                                                                    |
-| Post-dev UI QA           | `ui-qa FEAT-CART` — explore in parallel sessions, defects, manual cases, then Playwright specs      | `playwright-cli`, page objects                                                           |
-| Ad hoc testing           | `adhoc-test "<charter>" [--defects]` — unscripted, evidence, minimal repro                          | `seed:session`, `playwright-cli` · [example](docs/examples/adhoc-test-seeded-defects.md) |
-| **Bugs**                 |                                                                                                     |                                                                                          |
-| Bug verification         | `verify-bug DEF-007` — API repro script + UI repro, layer, verdict, pinned by a `test.fail` test    | `out/bugs/<id>/`, `playwright-cli`                                                       |
-| Bug triage               | `bug-triage --open` — verify, dedupe, severity, priority, suspect code, decision                    | `qa/defects.ts` (`qa:triage`)                                                            |
-| Retest after a fix       | `retest-bug DEF-007` — repro again, pinning test → regression test, close or reopen                 | `qa/impact.ts`                                                                           |
-| **Maintenance**          |                                                                                                     |                                                                                          |
-| Impact-based regression  | `regression --base origin/main` — select, run, triage flaky / test defect / product bug             | `qa/impact.ts` · [example](docs/examples/impact-pricing-change.md)                       |
-| Flaky tests              | `flaky-hunt` — `--repeat-each` without retries, rate per test, root cause, fix, prove               | `qa/flaky.ts` (`qa:flaky`)                                                               |
-| Self-healing tests       | `heal-tests --card CARD-157` — intended change vs regression, heal page objects first               | `ui-explorer`, vault cards                                                               |
-| **Release**              |                                                                                                     |                                                                                          |
-| Post-deploy smoke        | `smoke-check --env staging` — health, `@smoke`, critical pages by eye, PASS/FAIL                    | env profiles, saved accounts                                                             |
-| Test summary report      | `test-report --period sprint` — execution, coverage, defects, risks for stakeholders                | every `qa:*` report                                                                      |
-| Go/No-Go                 | `release-gate` — blockers, residual risks, sign-off                                                 | `qa/release-gate.ts` · [example](docs/examples/release-gate.md)                          |
-| **Self-improvement**     |                                                                                                     |                                                                                          |
-| Reflection, every run    | the last step of every workflow — lessons proposed, gated, judged by another agent                  | `propose_knowledge` → `knowledge-curator` → `commit_knowledge`                           |
-| Learning from humans     | `learn <PR#>` / `learn --audit` — review comments and human edits to agent PRs; stale lessons       | runs on every merged PR                                                                  |
+| QA activity              | Workflow (`/skill` in Claude Code, `bun run agent <name>` headless)                                 | Backed by                                                                              |
+| ------------------------ | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **Plan**                 |                                                                                                     |                                                                                        |
+| Risk-based test planning | `qa-plan` — impacted areas ranked by risk, coverage, exit criteria                                  | `qa/impact.ts`, vault, code graph                                                      |
+| AC refinement            | `refine-ac CARD-142` — ambiguities, rule conflicts, Given/When/Then, questions for Product          | knowledge MCP · [example](docs/examples/refine-ac-CARD-142.md)                         |
+| **Manual testing**       |                                                                                                     |                                                                                        |
+| Preconditions and data   | every start state from a named framework recipe — `qa:arrange cart priceCents=5000`, `--case TC-…`  | `framework/setup/recipes.ts` → `SETUP-RECIPES` knowledge                               |
+| Test-case design         | `write-testcases BR-COUP-02` — boundaries, decision tables, state transitions; no duplicates        | `knowledge/test-cases/` (16 cases)                                                     |
+| Manual execution         | `run-testcases FEAT-CART` — arranges each case with its recipe, then only its steps, with evidence  | `manual-tester` ×N, `qa/manual-runs.ts` → trace and gate                               |
+| Manual → automated       | `automate-tc --unautomated` — case steps become named `test.step`s, `automated_by` linked           | page objects, `arrange` (the case's recipe)                                            |
+| **Automated testing**    |                                                                                                     |                                                                                        |
+| Endpoint API tests       | `api-testgen "PATCH /api/cart/items/:productId"` — positive + negative per endpoint                 | API helpers, `seed`, rule boundaries                                                   |
+| API journey tests        | `api-journey-testgen "two customers race for the last units"` — chained calls, final business state | `tests/api/journeys/`                                                                  |
+| Post-dev UI QA           | `ui-qa FEAT-CART` — explore in parallel sessions, defects, manual cases, then Playwright specs      | `playwright-cli`, page objects                                                         |
+| Ad hoc testing           | `adhoc-test "<charter>" [--defects]` — unscripted, evidence, minimal repro                          | `qa:arrange`, `playwright-cli` · [example](docs/examples/adhoc-test-seeded-defects.md) |
+| **Bugs**                 |                                                                                                     |                                                                                        |
+| Bug verification         | `verify-bug DEF-007` — API repro script + UI repro, layer, verdict, pinned by a `test.fail` test    | `out/bugs/<id>/`, `playwright-cli`                                                     |
+| Bug triage               | `bug-triage --open` — verify, dedupe, severity, priority, suspect code, decision                    | `qa/defects.ts` (`qa:triage`)                                                          |
+| Retest after a fix       | `retest-bug DEF-007` — repro again, pinning test → regression test, close or reopen                 | `qa/impact.ts`                                                                         |
+| **Maintenance**          |                                                                                                     |                                                                                        |
+| Impact-based regression  | `regression --base origin/main` — select, run, triage flaky / test defect / product bug             | `qa/impact.ts` · [example](docs/examples/impact-pricing-change.md)                     |
+| Flaky tests              | `flaky-hunt` — `--repeat-each` without retries, rate per test, root cause, fix, prove               | `qa/flaky.ts` (`qa:flaky`)                                                             |
+| Test maintenance         | `heal-tests --card CARD-157` — classify each failure first; heal only documented changes            | `qa/heal-guard.ts` (`qa:heal-guard`), vault rules/cards                                |
+| **Release**              |                                                                                                     |                                                                                        |
+| Post-deploy smoke        | `smoke-check --env staging` — health, `@smoke`, critical pages by eye, PASS/FAIL                    | env profiles, saved accounts                                                           |
+| Test summary report      | `test-report --period sprint` — execution, coverage, defects, risks for stakeholders                | every `qa:*` report                                                                    |
+| Go/No-Go                 | `release-gate` — blockers, residual risks, sign-off                                                 | `qa/release-gate.ts` · [example](docs/examples/release-gate.md)                        |
+| **Self-improvement**     |                                                                                                     |                                                                                        |
+| Reflection, every run    | the last step of every workflow — lessons proposed, gated, judged by another agent                  | `propose_knowledge` → `knowledge-curator` → `commit_knowledge`                         |
+| Learning from humans     | `learn <PR#>` / `learn --audit` — review comments and human edits to agent PRs; stale lessons       | runs on every merged PR                                                                |
 
 ```mermaid
 flowchart LR
@@ -65,9 +66,11 @@ flowchart LR
   CS -->|MCP| CODE["codesearch MCP<br/>ripgrep + import graph"]
   UX -->|playwright-cli| APP["ShopLite<br/>(system under test)"]
   MT -->|playwright-cli| APP
-  TA --> FW["Playwright framework<br/>API helpers · seed · page objects"]
+  TA --> FW["Playwright framework<br/>API helpers · seed · recipes · page objects"]
+  UX -->|qa:arrange| FW
+  MT -->|qa:arrange| FW
   FW --> APP
-  O --> ENG["QA engines<br/>impact · traceability · gate · triage · manual runs · flakiness"]
+  O --> ENG["QA engines<br/>impact · traceability · gate · triage · manual runs · flakiness · heal guard"]
   QW -->|test cases, defects| RAG
   O -->|propose_knowledge| GATE["knowledge gate<br/>evidence · novelty · retrieval regression"]
   KC -->|commit_knowledge| GATE
@@ -92,24 +95,26 @@ On bash: `export STRING_HEX_SHOPLITE=b4a8856ed96c7f3dbf79c4cd155bb59f59877615922
 > accounts belong to a demo shop that runs on your machine; a real project keeps it in a secret store — CI reads it
 > from the `STRING_HEX_SHOPLITE` repository secret.
 
-| Command                                               | Does                                                                   |
-| ----------------------------------------------------- | ---------------------------------------------------------------------- |
-| `bun run test:all` / `test:smoke` / `test:unit`       | All browsers / critical path / QA-engine unit tests                    |
-| `bun run test:staging` / `test:live`                  | The suite against staging / the `@readonly` tests against live         |
-| `bun run qa:impact [--base <ref> \| --files <paths>]` | Change → impacted features, risk, the `--grep` to run                  |
-| `bun run qa:trace`                                    | Feature/rule ↔ tests ↔ manual cases ↔ defects                          |
-| `bun run qa:gate`                                     | Go/No-Go from `out/results.json`                                       |
-| `bun run qa:defects`                                  | Runs the suite once per seeded defect; fails if one survives           |
-| `bun run qa:triage [DEF-… \| --all]`                  | Defect board: suggested priority, blockers, duplicates, age, next step |
-| `bun run qa:manual [--check <run.json>]`              | Manual suite progress from `out/manual-runs/`; validates a run record  |
-| `bun run qa:flaky`                                    | Flake rate per test from a `--repeat-each` run                         |
-| `bun run kb:audit` / `kb:evaluate <proposal.json>`    | Stale/duplicate/unconfirmed learnings / the knowledge gate, dry run    |
-| `bun run rag:test`                                    | Knowledge-gate tests (pytest)                                          |
-| `bun run rag:build` / `rag:eval` / `rag:serve`        | Index the vault / evaluate retrieval / MCP over HTTP                   |
-| `bun run codesearch "apply coupon"`                   | Hybrid code search (also `--symbol`, `--related`, `--helpers`)         |
-| `bun run seed:session --name s1 --cart 2`             | Seed data over the API + a signed-in state for `playwright-cli`        |
-| `'secret' \| bun run crypto encrypt`                  | An `enc1.…` token for `env/` (`keygen`, `decrypt` too)                 |
-| `bun run agent <workflow> [args]`                     | Run a workflow headless (`bun run agent list`)                         |
+| Command                                                  | Does                                                                   |
+| -------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `bun run test:all` / `test:smoke` / `test:unit`          | All browsers / critical path / QA-engine unit tests                    |
+| `bun run test:staging` / `test:live`                     | The suite against staging / the `@readonly` tests against live         |
+| `bun run qa:impact [--base <ref> \| --files <paths>]`    | Change → impacted features, risk, the `--grep` to run                  |
+| `bun run qa:trace`                                       | Feature/rule ↔ tests ↔ manual cases ↔ defects                          |
+| `bun run qa:gate`                                        | Go/No-Go from `out/results.json`                                       |
+| `bun run qa:defects`                                     | Runs the suite once per seeded defect; fails if one survives           |
+| `bun run qa:triage [DEF-… \| --all]`                     | Defect board: suggested priority, blockers, duplicates, age, next step |
+| `bun run qa:manual [--check <run.json>]`                 | Manual suite progress from `out/manual-runs/`; validates a run record  |
+| `bun run qa:flaky`                                       | Flake rate per test from a `--repeat-each` run                         |
+| `bun run qa:heal-guard [--base <ref>] [--intended <id>]` | Blocks test changes that hide a failure (see below)                    |
+| `bun run kb:audit` / `kb:evaluate <proposal.json>`       | Stale/duplicate/unconfirmed learnings / the knowledge gate, dry run    |
+| `bun run rag:test`                                       | Knowledge-gate tests (pytest)                                          |
+| `bun run rag:build` / `rag:eval` / `rag:serve`           | Index the vault / evaluate retrieval / MCP over HTTP                   |
+| `bun run codesearch "apply coupon"`                      | Hybrid code search (also `--symbol`, `--related`, `--helpers`)         |
+| `bun run qa:arrange <recipe> --name s1 [k=v …]`          | A named precondition + its test data + a state for `playwright-cli`    |
+| `bun run qa:arrange --case TC-… \| --list \| --check`    | A test case's preconditions / the recipes / catalog and cases in sync  |
+| `'secret' \| bun run crypto encrypt`                     | An `enc1.…` token for `env/` (`keygen`, `decrypt` too)                 |
+| `bun run agent <workflow> [args]`                        | Run a workflow headless (`bun run agent list`)                         |
 
 Agents need Claude credentials: a Claude Code login locally, or `ANTHROPIC_API_KEY` / `CLAUDE_CODE_OAUTH_TOKEN`
 in CI. Interactively, open the repo in Claude Code and type `/refine-ac CARD-142`.
@@ -158,17 +163,18 @@ rules, work-item cards, defects, manual test cases and review learnings. `rag/` 
   when `NEO4J_URI` is set, otherwise in memory.
 - **Hybrid search:** vector hits, graph neighbours of the ids the query names and of the top hits, and query intent,
   fused with reciprocal-rank fusion. Test cases restate their rules, so they rank below them unless the question asks
-  for test cases — adding 14 cases had dropped MRR to 0.773 until this prior went in.
+  for test cases — adding 14 cases had dropped MRR to 0.773 until this prior went in. The generated setup catalog
+  gets the same prior unless the question is about preconditions or test data.
 
-On a 22-question golden set (`rag/golden.yaml`), `bun run rag:eval` compares the three modes, and CI fails if hybrid
+On a 26-question golden set (`rag/golden.yaml`), `bun run rag:eval` compares the three modes, and CI fails if hybrid
 regresses. With `LANGSMITH_API_KEY` set, the run is logged to **LangSmith** as an experiment, and `--answers` adds
 answer quality: Claude answers from the retrieved context only, and an LLM judge scores faithfulness.
 
 | Mode       | hit@1     | hit@5   | MRR       |
 | ---------- | --------- | ------- | --------- |
-| vector     | 0.636     | 1.0     | 0.784     |
-| graph      | 0.455     | 0.727   | 0.591     |
-| **hybrid** | **0.727** | **1.0** | **0.856** |
+| vector     | 0.615     | 1.0     | 0.758     |
+| graph      | 0.385     | 0.615   | 0.5       |
+| **hybrid** | **0.731** | **1.0** | **0.859** |
 
 The **knowledge MCP server** (`rag/server.py`) exposes `search_knowledge`, `get_document`, `related`,
 `list_documents`, `upsert_document` (test cases and defects), `propose_knowledge`, `commit_knowledge` and `audit_knowledge`.
@@ -225,11 +231,52 @@ unfindable. Every decision is a line in `knowledge/_curation/ledger.jsonl`. `lea
 re-validates what's there: stale scopes, unconfirmed lessons after 60 days, near-duplicates. On every merged PR, CI
 runs `learn <PR>` and opens a PR with what was accepted.
 
+### Preconditions and test data: arrange with the framework, act by hand
+
+A manual run, a bug repro, an exploration and a spec all start from the same **named recipe**
+(`framework/setup/recipes.ts`): `guest`, `returning-customer`, `customer`, `locked-out`, `product`, `cart`, `coupon`
+(any shape: minimum, cap, expired), `order` (placed, shipped, cancelled). Agents never click through registration,
+cart or checkout to reach a start state, and never invent cards, dates or emails.
+
+| Who                     | How                                                                                                             |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------- |
+| manual tester, explorer | `bun run qa:arrange --case TC-CHK-002 --name s1` → JSON with ids, `testData`, `next` commands to open the state |
+| bug repro (`repro.ts`)  | `await arrange(request, 'coupon', { expired: true })`, then only the call under test                            |
+| spec                    | the `arrange` fixture — the same recipe as the manual case it automates                                         |
+
+Each test case names its recipe in frontmatter (`setup: { recipe: cart, priceCents: 5000 }`). The recipes are
+knowledge too: `bun run qa:arrange --catalog` renders `knowledge/setup/SETUP-RECIPES.md` from the code, so agents
+find "how do I get a locked-out account?" with `search_knowledge(scope="setup")`, and the document can't drift.
+CI's `qa:arrange --check` fails on a stale catalog or a test case without a valid recipe. A state no recipe builds
+comes back as `RECIPE_MISSING`, and the fix is a new recipe in code, reviewed. The catalog then regenerates itself.
+
+### Failure triage and the heal guard
+
+A failing test is evidence about the product until proven otherwise. Before anything is edited, each failure is
+classified against the vault and a framework-arranged repro (`.claude/rules/failure-triage.md`):
+
+| Class             | Evidence                                                                     | Test edit allowed                              |
+| ----------------- | ---------------------------------------------------------------------------- | ---------------------------------------------- |
+| `PRODUCT_BUG`     | the app contradicts the rule                                                 | none — defect, then `test.fail` once confirmed |
+| `INTENDED_CHANGE` | a rule/feature/card already states the new behaviour, changed after the test | expected values follow that document           |
+| `TEST_DEFECT`     | the app matches the vault; the locator, wait or data is wrong                | fix to the vault, never to the observed value  |
+| `UNKNOWN`         | nothing documents the new behaviour                                          | none — a question for Product                  |
+
+A diff of `app/` is never evidence of intent: the code changing is exactly what a bug looks like. `qa/heal-guard.ts`
+enforces this mechanically. It compares tests and framework with the base ref and blocks the following:
+
+- removed or weakened assertions (exact → partial → presence);
+- skips, a `test.fail` without an open defect, hard waits, raised timeouts or retries;
+- a new expected value or API schema, unless `--intended <DOC-ID>` names a document that's on the base branch,
+  unchanged in this diff, and changed after the test.
+
+It runs before an agent opens a PR and again in CI, where it blocks `agentic/*` branches and reports on the rest.
+
 ### Hybrid code search
 
 The `codesearch` MCP (`codesearch/`) combines **ripgrep** text hits, ranked by term rarity, with an **import and
 symbol graph** that resolves tsconfig aliases and indexes page-object methods. `list_helpers` shows agents the
-reusable API helpers, `seed` and page objects before they write anything new.
+reusable API helpers, `seed`, recipes and page objects before they write anything new.
 
 ### Deterministic QA engines (`qa/`)
 
@@ -252,11 +299,14 @@ The agents call these engines instead of deciding by feel. All of them are unit-
 - **Manual runs.** A zod-validated record per manual execution (a case's result must agree with its steps; a failure
   names its defect); the latest result per case feeds traceability and the gate.
 - **Flakiness.** From a `--repeat-each` run without retries: failure rate per test and project, stable / flaky / broken.
+- **Heal guard.** Reads every assertion before and after a change: its subject, message, matcher strength and expected
+  value. Anything that would turn a red test green without documented intent is blocked (see above).
 
 ### Playwright framework
 
-- **Setup over the API, assert at the surface.** `seed.product({ priceCents, stock })`, `seed.cart`, `seed.order` and
-  `seed.shipped` create data each test owns, so all 112 tests run fully parallel.
+- **Setup over the API, assert at the surface.** `seed.product({ priceCents, stock })`, `seed.cart`, `seed.order`,
+  `seed.shipped` and the named recipes on top of them (`arrange('cart', …)`) create data each test owns, so all 112
+  tests run fully parallel.
 - **Validated contracts.** Zod schemas check every response. `expectRefused(call, status, code)` asserts the error
   contract.
 - **Page objects wait for the request behind an action,** never for time. Locators are role and label based.
@@ -297,11 +347,11 @@ its own.
 
 ### CI/CD
 
-| Pipeline                                       | Runs                                                                                                                                                                                                                                                                                                        |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [QA pipeline](.github/workflows/ci.yml)        | Lint, types, format and unit tests · RAG build + eval (local graph and Neo4j service) · impact selection on PRs · API, Chromium ×2 shards, Firefox and WebKit in the Playwright image · staging smoke and live read-only · seeded-defect detection · merged report → traceability → Go/No-Go → GitHub Pages |
-| [Agentic QA](.github/workflows/agentic-qa.yml) | On demand, any workflow. On a PR labelled `agentic-qa`: a test plan, then regression, with the summary posted on the PR. Workflows that write open a PR with the result.                                                                                                                                    |
-| [azure-pipelines.yml](azure-pipelines.yml)     | The same on Azure DevOps: parallel regression published to Test Runs, the gate, and the Agent SDK regression stage                                                                                                                                                                                          |
+| Pipeline                                       | Runs                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [QA pipeline](.github/workflows/ci.yml)        | Lint, types, format and unit tests · recipe catalog and test-case setups in sync · heal guard on PRs · RAG build + eval (local graph and Neo4j service) · impact selection on PRs · API, Chromium ×2 shards, Firefox and WebKit in the Playwright image · staging smoke and live read-only · seeded-defect detection · merged report → traceability → Go/No-Go → GitHub Pages |
+| [Agentic QA](.github/workflows/agentic-qa.yml) | On demand, any workflow. On a PR labelled `agentic-qa`: a test plan, then regression, with the summary posted on the PR. Workflows that write open a PR with the result, after the heal guard passes.                                                                                                                                                                         |
+| [azure-pipelines.yml](azure-pipelines.yml)     | The same on Azure DevOps: parallel regression published to Test Runs, the gate, and the Agent SDK regression stage                                                                                                                                                                                                                                                            |
 
 ## Project structure
 
@@ -309,16 +359,16 @@ its own.
 ├─ app/                 ShopLite: REST API (domain/, routes/), SPA (web/), seeded defects (defects.ts)
 ├─ env/                 .env.dev · .env.staging · .env.live — per-environment settings, encrypted accounts
 ├─ framework/           api/ (helpers + zod schemas) · auth/ (accounts, storage states) · config/ (env, paths,
-│                       timeouts) · data/ · pages/ · setup/ (seed, app launcher, seed:session CLI) ·
+│                       timeouts) · data/ · pages/ · setup/ (seed, recipes + qa:arrange CLI, catalog, app launcher) ·
 │                       utils/ (date, step, crypto) · fixtures
 ├─ tests/               api/endpoints · api/journeys · ui · unit (QA engines) · rag (knowledge gate, pytest)
-├─ knowledge/           vault: product, features, rules, cards, defects, test-cases, learnings ·
+├─ knowledge/           vault: product, features, rules, cards, defects, test-cases, learnings, setup (generated) ·
 │                       _curation/ (decision ledger, proposals waiting for a human)
 ├─ rag/                 Hybrid RAG (Python/uv): vault loader, ChromaDB, graph (local/Neo4j), fusion, MCP server,
 │                       eval (+ learned probes), knowledge gate (curate.py), Dockerfile
 ├─ codesearch/          ripgrep + import/symbol graph, CLI and MCP server
 ├─ qa/                  impact · traceability · release gate · seeded-defect detection · defect triage ·
-│                       manual runs · flakiness
+│                       manual runs · flakiness · heal guard
 ├─ agents/              Claude Agent SDK runner and workflow registry
 ├─ .claude/             skills/ (19 workflows) · agents/ (8 subagents) · rules/ · settings.json
 ├─ docs/examples/       outputs of real runs

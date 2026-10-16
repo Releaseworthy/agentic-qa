@@ -7,14 +7,14 @@ covers: [BR-SHIP-01]
 priority: high
 status: ready
 automated_by: none
+setup: { recipe: cart, priceCents: 5000, stock: 10, quantity: 1 }
 ---
 
 # TC-CHK-002 — Shipping is free from exactly $50.00 after the discount
 
 ## Preconditions
 
-- A signed-in customer with one product at exactly $50.00 (stock 10) in the cart:
-  `bun run seed:session --name <session> --product 5000:10 --cart 1`.
+- A signed-in customer with one product at exactly $50.00 (stock 10) in the cart: `bun run qa:arrange --case TC-CHK-002 --name <session>`.
 
 ## Steps
 

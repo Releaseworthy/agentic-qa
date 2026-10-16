@@ -102,9 +102,9 @@ test.describe('Cart', { tag: '@FEAT-CART' }, () => {
   test(
     'an expired coupon is refused',
     { tag: ['@FEAT-COUPON', '@BR-COUP-03'] },
-    async ({ seed, customer, cartPage }) => {
-      await test.step('Given a $40.00 cart', async () => {
-        await seed.cart(customer, [{ product: await seed.product({ priceCents: 4000 }) }]);
+    async ({ arrange, cartPage }) => {
+      await test.step('Given a $40.00 cart (TC-COUP-003 setup)', async () => {
+        await arrange('cart', { priceCents: 4000, stock: 10, quantity: 1 });
       });
 
       await test.step('When the expired SUMMER20 is applied', async () => {

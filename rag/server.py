@@ -22,7 +22,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from rag import curate
 from rag.build import index_document, rebuild_graph
 from rag.config import KNOWLEDGE_DIR, ROOT
-from rag.curate import QA_ARTIFACTS
+from rag.curate import GENERATED, QA_ARTIFACTS
 from rag.graph import GraphStore, open_graph
 from rag.hybrid import SCOPES, HybridRetriever, Mode
 from rag.vault import Document, load_vault, parse
@@ -77,7 +77,8 @@ def _doc(doc_id: str) -> Document | None:
 def search_knowledge(query: str, scope: str | None = None, k: int = 6, mode: str = "hybrid") -> list[dict[str, Any]]:
     """Hybrid (vector + knowledge-graph) search of the vault.
 
-    scope: wiki | rules | features | test-cases | learnings | defects | cards (omit for everything).
+    scope: wiki | rules | features | test-cases | learnings | defects | cards | setup (omit for everything).
+    `setup` answers how to arrange a precondition or get test data with the framework (recipes, cards, accounts).
     mode: hybrid (default) | vector | graph. Returns the best chunk of each document,
     how it was found (`via`), and its graph neighbours (`related`).
     """
@@ -115,7 +116,7 @@ def related(node_id: str, depth: int = 1) -> dict[str, Any]:
 
 @server.tool()
 def list_documents(type: str | None = None) -> list[dict[str, Any]]:
-    """Every document (optionally one type: feature, rule, card, defect, test-case, learning) with key metadata."""
+    """Every document (optionally one type: feature, rule, card, defect, test-case, learning, setup) with key metadata."""
     out: list[dict[str, Any]] = []
     for d in state().docs:
         if type and d.type != type:
@@ -155,6 +156,8 @@ def upsert_document(path: str, content: str) -> dict[str, Any]:
     knowledge: propose it with propose_knowledge.
     """
     doc = parse(ROOT / path, content)
+    if doc.type in GENERATED:
+        raise ValueError(f"a {doc.type} document is generated from code: change framework/setup/recipes.ts, then bun run qa:arrange --catalog")
     if doc.type not in QA_ARTIFACTS:
         raise ValueError(f"upsert_document writes test cases and defects; a {doc.type} goes through propose_knowledge")
     return _write(ROOT / path, content)

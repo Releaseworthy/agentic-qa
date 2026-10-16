@@ -16,9 +16,11 @@ Read `.claude/rules/orchestration.md` first.
    - error guessing from open defects and `learnings`.
    Keep a case only if no existing case covers it. Rank by risk: feature criticality × rule severity.
 3. **Write:** `qa-writer` writes one `TC-…` per kept case, `status: draft` (a card, or labels not yet seen in the
-   app) or `ready` (labels confirmed from `app/web/` or an earlier exploration), with the `seed:session` command
-   for its preconditions and expected results verbatim from the rules.
+   app) or `ready` (labels confirmed from `app/web/` or an earlier exploration), with `setup` naming
+   the framework recipe that arranges its preconditions (`.claude/rules/test-data.md`; `SETUP-RECIPES`) and expected
+   results verbatim from the rules. A precondition no recipe covers → `RECIPE_MISSING`: `test-author` adds the recipe
+   first (`test-reviewer` reviews it), `bun run qa:arrange --catalog`, then the case. `bun run qa:arrange --check` passes.
 4. **Review:** `test-reviewer` on each case (≤ 2 rounds).
 5. **Reflect:** `.claude/rules/self-improve.md`.
 
-Final response: the design table (case → technique → rule → priority), cases written (ids, status), duplicates skipped, review verdicts, knowledge proposals.
+Final response: the design table (case → technique → rule → priority → recipe), recipes added, cases written (ids, status), duplicates skipped, review verdicts, knowledge proposals.

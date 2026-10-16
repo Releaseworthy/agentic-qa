@@ -7,15 +7,14 @@ covers: [BR-CART-01]
 priority: high
 status: ready
 automated_by: tests/ui/cart.spec.ts › Cart › more than 10 units shows the limit
+setup: { recipe: cart, priceCents: 1000, stock: 50, quantity: 1 }
 ---
 
 # TC-CART-001 — A cart line cannot go above 10 units
 
 ## Preconditions
 
-- A signed-in customer (registered over the API).
-- A product with price $10.00 and stock 50, already in the cart with quantity 1
-  (set up over the API).
+- A signed-in customer with a $10.00 product (stock 50) in the cart, quantity 1: `bun run qa:arrange --case TC-CART-001 --name <session>`.
 
 ## Steps
 

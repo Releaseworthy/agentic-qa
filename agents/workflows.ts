@@ -122,7 +122,7 @@ export const WORKFLOWS = {
   },
   'heal-tests': {
     skill: 'heal-tests',
-    summary: 'Update tests to an intended product change, report real breaks',
+    summary: 'Classify failures first; heal only documented changes, report bugs',
     writes: true,
     maxTurns: 200,
     budgetUsd: 8,
@@ -203,6 +203,21 @@ export const RESULT_SCHEMA = {
         },
       },
     },
+    intended: {
+      type: 'array',
+      description:
+        'Test changes that follow a documented behaviour change (heal-tests): the rule, feature or card that states it. ' +
+        'The heal guard accepts an expected-value change only for a document listed here that changed after the test.',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['doc', 'why'],
+        properties: {
+          doc: { type: 'string', description: 'BR-…, FEAT-… or CARD-… id' },
+          why: { type: 'string', description: 'What the document now says, and which tests follow it.' },
+        },
+      },
+    },
     findings: {
       type: 'array',
       items: {
@@ -226,4 +241,5 @@ export type WorkflowResult = {
   artifacts: { path: string; kind: string }[];
   findings: { severity: string; title: string; ref?: string }[];
   knowledge?: { id: string; decision: 'accepted' | 'rejected' | 'needs-human'; why?: string }[];
+  intended?: { doc: string; why: string }[];
 };

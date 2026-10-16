@@ -218,6 +218,8 @@ const summary = [
   structured?.knowledge?.length
     ? `\nKnowledge: ${structured.knowledge.map((k) => `${k.id} ${k.decision}${k.why ? ` (${k.why})` : ''}`).join(' · ')}`
     : '',
+  // One line per document, read back by the heal guard in CI (Intended-change: <id>).
+  ...(structured?.intended ?? []).map((i) => `\nIntended-change: ${i.doc} — ${i.why}`),
   '',
   `<sub>Models: ${models}</sub>`,
 ].join('\n');

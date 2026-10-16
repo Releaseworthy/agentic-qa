@@ -9,7 +9,7 @@ argument-hint: "<FEAT-… | CARD-…> [focus]"
 Read `.claude/rules/orchestration.md` and `.claude/rules/browser.md` first.
 
 1. **Ground** with `knowledge-scout`: the feature's pages, flows, rules with boundaries, error messages, open defects, existing manual cases (`test-cases` scope).
-2. **Plan scenarios**: 4–8 charters covering the main flow, each rule's boundaries as seen in the UI, error display, state after reload, navigation (`?next=`), and the focus the caller gave. For each: start state (a `seed:session` command) and steps.
+2. **Plan scenarios**: 4–8 charters covering the main flow, each rule's boundaries as seen in the UI, error display, state after reload, navigation (`?next=`), and the focus the caller gave. For each: start state (a framework recipe — `bun run qa:arrange <recipe> …`, `.claude/rules/test-data.md`) and steps.
 3. **Explore in parallel**: one `ui-explorer` per 2–3 charters, in one message, each with its own session name and seeded data, the expected results (with DOC-ids) and what to return. Explorers run on the lightweight model; keep their prompts self-contained.
 4. **Triage findings**: a real difference from a rule → `qa-writer` writes a defect (`DEF-…`) with the explorer's evidence; a question the vault can't settle → list it for the human; a UI quirk that affects automation (timing, labels) → note for the author.
 5. **Manual cases**: `qa-writer` writes one `TC-…` per verified scenario, from the explorer's observed steps — never from expectations alone.

@@ -19,7 +19,14 @@ export type Defect = Doc & {
   /** ISO day the defect was reported; empty when unknown. */
   reported: string;
 };
-export type TestCase = Doc & { feature: string; covers: string[]; priority: string; automatedBy: string };
+export type TestCase = Doc & {
+  feature: string;
+  covers: string[];
+  priority: string;
+  automatedBy: string;
+  /** The framework recipe that arranges its preconditions (setup: { recipe: cart, priceCents: 5000 }). */
+  setup: { recipe: string; params: Record<string, unknown> } | undefined;
+};
 
 export type Severity = 'critical' | 'high' | 'medium' | 'low';
 export const SEVERITY_RANK: Record<Severity, number> = { critical: 4, high: 3, medium: 2, low: 1 };
@@ -38,6 +45,12 @@ const list = (v: unknown): string[] =>
   Array.isArray(v) ? v.map(scalar).filter(Boolean) : scalar(v) ? [scalar(v)] : [];
 const status = (v: unknown): DefectStatus =>
   (DEFECT_STATUSES as readonly string[]).includes(scalar(v)) ? (scalar(v) as DefectStatus) : 'new';
+
+function setupOf(v: unknown): TestCase['setup'] {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return undefined;
+  const { recipe, ...params } = v as Record<string, unknown>;
+  return { recipe: scalar(recipe), params };
+}
 
 export function loadDocs(dir = join(ROOT, 'knowledge')): Doc[] {
   const docs: Doc[] = [];
@@ -98,6 +111,7 @@ export class Vault {
         covers: list(d.meta.covers),
         priority: scalar(d.meta.priority),
         automatedBy: scalar(d.meta.automated_by),
+        setup: setupOf(d.meta.setup),
       }));
   }
 

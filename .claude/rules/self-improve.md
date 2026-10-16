@@ -9,7 +9,9 @@ Every run ends with a **reflection**. The vault only gets what passes the gate a
    | a fix-and-rerun round (test, script, command) | the cause and the fix that worked |
    | `knowledge-scout` said `Unknown:` and the run found out | the missing fact (feature map → proposal; behaviour → human) |
    | the app contradicted the vault | a **defect**, not a lesson — unless the vault is what's wrong (→ proposal for a human) |
-   | a tool or environment pitfall (playwright-cli, seed, env) | the workaround, with why |
+   | a tool or environment pitfall (playwright-cli, qa:arrange, env) | the workaround, with why |
+   | `RECIPE_MISSING`: a start state had to be scripted by hand | a **recipe** in `framework/setup/recipes.ts` (code, reviewed) — the catalog regenerates; not a learning |
+   | the heal guard blocked a change | what the failure really was (`.claude/rules/failure-triage.md`) |
    | a human correction in the conversation or a PR | the rule they stated |
    | a provisional learning (`confidence: provisional`) that held, or was wrong | support for it (update) or a deprecation |
 2. **Candidates:** at most 3 per run, each reusable beyond this run. A lesson says what to do, why, and where

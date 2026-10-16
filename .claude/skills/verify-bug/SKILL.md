@@ -6,17 +6,21 @@ argument-hint: "<DEF-… | \"report\"> [--defects <ids>]"
 
 # Bug verification
 
-Read `.claude/rules/orchestration.md`, `.claude/rules/browser.md` and `.claude/rules/bug-lifecycle.md` first.
+Read `.claude/rules/orchestration.md`, `.claude/rules/browser.md`, `.claude/rules/test-data.md` and `.claude/rules/bug-lifecycle.md` first.
 
 1. **The report:** `get_document <DEF-id>`, or parse the text into steps / expected / actual. `--defects` → a
-   practice run: seed sessions get `--defects <ids>`; the last command is `bun run seed:session --name reset --defects none`;
+   practice run: the first `qa:arrange` gets `--defects <ids>`; the last command is `bun run qa:arrange guest --name reset --defects none`;
    nothing is written to `knowledge/defects/`.
 2. **Expected, in parallel:** `knowledge-scout` — the rule/feature that governs the behaviour (verbatim values,
    codes, messages) and any defect already open on that rule or feature (`bun run qa:triage` lists duplicate candidates).
    No document governs it → `NEEDS_INFO` with the question for Product; stop.
-3. **API repro:** write `out/bugs/<id>/repro.ts` (the `@api` helpers and `Seed`, or `fetch`) that sets up the
-   start state, makes the call, and prints the request and the response. Run it 3 times with `bun run`.
-4. **UI repro:** one `ui-explorer` with the steps, the expected values and a `seed:session` start state; it returns
+3. **Start state:** the recipe for the report's preconditions (`search_knowledge(<state>, scope="setup")`; a defect found
+   by a manual case → that case's `setup`). Write it into the defect's Steps as `bun run qa:arrange <recipe> …` so a
+   retest arranges the same state. No recipe fits → compose it in the repro from `arrange()`/`Seed` and report
+   `RECIPE_MISSING`.
+   **API repro:** write `out/bugs/<id>/repro.ts` — `arrange(request, '<recipe>', { … })` from `@setup/recipes` for the
+   start state, then only the call under test with the `@api` helpers (or `fetch`), printing the request and the response. Run it 3 times with `bun run`.
+4. **UI repro:** one `ui-explorer` with the steps, the expected values and the same recipe (`bun run qa:arrange <recipe> --name <session> …`); it returns
    what the screen showed, the request/response behind it, and screenshots in `out/bugs/<id>/`.
 5. **Verdict:**
    | API | UI | Verdict |

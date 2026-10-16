@@ -20,6 +20,7 @@ over MCP (`knowledge` server).
 | `defects/`    | `defect`    | Defects with lifecycle, severity, priority — input to the gate      | QA · `upsert_document`, reviewed               |
 | `test-cases/` | `test-case` | The manual test suite: steps with exact labels and expected results | QA · `upsert_document`, reviewed               |
 | `learnings/`  | `learning`  | How to work here: conventions, pitfalls, tool quirks               | Agents · proposal → gate → judge               |
+| `setup/`      | `setup`     | `SETUP-RECIPES`: how to arrange any precondition and its test data with the framework | Code · generated from `framework/setup/recipes.ts` (`bun run qa:arrange --catalog`) |
 | `_curation/`  | —           | `ledger.jsonl` (every knowledge decision) · `proposals/` (waiting for a human) | not indexed                    |
 
 ## Lifecycles
@@ -28,7 +29,8 @@ over MCP (`knowledge` server).
   `rejected` with a `resolution` (`not-a-bug`, `duplicate`, `cannot-reproduce`, `wont-fix`). Anything not
   closed or rejected counts as open for the release gate. Each change adds a line under `## History`.
 - **Test case** `status`: `draft` (written from rules, not yet walked) → `ready` (walked in the app) →
-  `obsolete`. `automated_by` names the spec › title, or `none`.
+  `obsolete`. `automated_by` names the spec › title, or `none`. `setup` names the recipe that arranges its
+  preconditions (`bun run qa:arrange --case <id>`); `bun run qa:arrange --check` fails CI on a missing or invalid one.
 - **Learning** `confidence`: `provisional` (an agent saw it once) → `established` (human evidence, or a
   second independent source — `support` counts them). `status: deprecated` keeps it as history, unretrieved.
 
