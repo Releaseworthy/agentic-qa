@@ -1,7 +1,7 @@
-# Azure DevOps equivalent of .github/workflows/ci.yml + agentic-qa.yml:
-# quality gates, parallel regression in the Playwright image with results
-# published to Azure Test Plans (Test Runs), the Go/No-Go gate, and the
-# Claude Agent SDK regression workflow when a key is configured.
+# Azure DevOps equivalent of .github/workflows/ci.yml + agentic-qa.yml: quality gates, parallel regression with
+# results published to Azure Test Plans (Test Runs), the Go/No-Go gate, and the Claude Agent SDK regression
+# workflow when a key is configured. Runs on Microsoft-hosted Ubuntu VMs (browsers installed with their OS
+# libraries); the GitHub workflows are the ones exercised on every push.
 #
 # Variables (pipeline or variable group): STRING_HEX_SHOPLITE (secret, decrypts env/),
 # ANTHROPIC_API_KEY (secret, optional).
@@ -13,40 +13,37 @@ pr:
   branches:
     include: [main]
 
-variables:
-  PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.64.1-noble
+pool:
+  vmImage: ubuntu-24.04
 
 stages:
   - stage: Quality
     jobs:
       - job: checks
-        displayName: lint · types · unit
-        pool: { vmImage: ubuntu-latest }
+        displayName: lint · types · format · unit · catalogs
         steps:
-          - script: curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.3" && echo "##vso[task.prependpath]$HOME/.bun/bin"
-            displayName: Install Bun
-          - script: bun install --frozen-lockfile
-          - script: bun run lint && bun run typecheck && bun run test:unit
-            displayName: Lint, types, unit tests
+          - template: .azure/setup.yml
+          - script: bun run lint && bun run typecheck && bun run format:check && bun run test:unit
+            displayName: Lint, types, format, unit tests
+          - script: bun run qa:arrange --check && bun run qa:vault
+            displayName: Recipe catalog and vault frontmatter
 
   - stage: Regression
     dependsOn: Quality
     jobs:
       - job: tests
         displayName: Playwright
-        pool: { vmImage: ubuntu-latest }
-        container: $[ variables['PLAYWRIGHT_IMAGE'] ]
         strategy:
           matrix:
-            api: { PROJECT: api }
-            chromium: { PROJECT: chromium }
-            firefox: { PROJECT: firefox }
-            webkit: { PROJECT: webkit }
+            api: { PROJECT: api, BROWSER: '' }
+            chromium: { PROJECT: chromium, BROWSER: chromium }
+            firefox: { PROJECT: firefox, BROWSER: firefox }
+            webkit: { PROJECT: webkit, BROWSER: webkit }
           maxParallel: 4
         steps:
-          - script: curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.3" && echo "##vso[task.prependpath]$HOME/.bun/bin"
-            displayName: Install Bun
-          - script: bun install --frozen-lockfile
+          - template: .azure/setup.yml
+          - script: test -z "$(BROWSER)" || bunx playwright install --with-deps "$(BROWSER)"
+            displayName: Install the browser
           - script: bun --bun playwright test --project=$(PROJECT)
             displayName: Test $(PROJECT)
             env:
@@ -70,11 +67,9 @@ stages:
 
       - job: defects
         displayName: Seeded-defect detection
-        pool: { vmImage: ubuntu-latest }
         steps:
-          - script: curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.3" && echo "##vso[task.prependpath]$HOME/.bun/bin"
-            displayName: Install Bun
-          - script: bun install --frozen-lockfile && bun run qa:defects
+          - template: .azure/setup.yml
+          - script: bun run qa:defects
             env:
               STRING_HEX_SHOPLITE: $(STRING_HEX_SHOPLITE)
 
@@ -84,11 +79,8 @@ stages:
     jobs:
       - job: gate
         displayName: Go/No-Go
-        pool: { vmImage: ubuntu-latest }
         steps:
-          - script: curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.3" && echo "##vso[task.prependpath]$HOME/.bun/bin"
-            displayName: Install Bun
-          - script: bun install --frozen-lockfile
+          - template: .azure/setup.yml
           - download: current
             patterns: 'results-*/*.json'
           - script: |
@@ -99,27 +91,35 @@ stages:
 
   - stage: Agentic
     dependsOn: Quality
-    condition: and(succeeded(), ne(variables['ANTHROPIC_API_KEY'], ''))
     jobs:
       - job: agent
         displayName: Claude Agent SDK · impact-based regression
-        pool: { vmImage: ubuntu-latest }
-        container: $[ variables['PLAYWRIGHT_IMAGE'] ]
         timeoutInMinutes: 60
         steps:
           - checkout: self
             fetchDepth: 0
+          # Secret variables can't be read in a stage condition; the job checks for the key itself.
           - script: |
-              curl -fsSL https://bun.sh/install | bash -s "bun-v1.4.3" && echo "##vso[task.prependpath]$HOME/.bun/bin"
-              curl -LsSf https://astral.sh/uv/install.sh | sh && echo "##vso[task.prependpath]$HOME/.local/bin"
-            displayName: Install Bun and uv
-          - script: bun install --frozen-lockfile && uv sync --frozen && bun run rag:build
-            displayName: Packages and RAG index
+              if [ -z "$ANTHROPIC_API_KEY" ]; then
+                echo "##vso[task.logissue type=warning]Set ANTHROPIC_API_KEY to run the agentic stage."
+                echo "##vso[task.setvariable variable=SKIP_AGENT]true"
+              fi
+            displayName: Credentials
+            env:
+              ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
+          - template: .azure/setup.yml
+            parameters:
+              browser: chromium
+              python: true
+          - script: bunx playwright-cli install-browser chromium && bun run rag:build
+            displayName: Tools the agents call
+            condition: ne(variables['SKIP_AGENT'], 'true')
           - script: bun run agent regression --base origin/main
             displayName: Agentic regression
+            condition: ne(variables['SKIP_AGENT'], 'true')
             env:
               ANTHROPIC_API_KEY: $(ANTHROPIC_API_KEY)
               STRING_HEX_SHOPLITE: $(STRING_HEX_SHOPLITE)
           - publish: out/agent-runs
             artifact: agent-runs
-            condition: succeededOrFailed()
+            condition: and(succeededOrFailed(), ne(variables['SKIP_AGENT'], 'true'))

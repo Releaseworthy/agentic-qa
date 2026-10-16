@@ -84,13 +84,55 @@ describe('review', () => {
       expect(kinds(review([changed(after)], OPEN, none)), after).toContain('suppressed:blocked');
   });
 
-  it('accepts test.fail only when it pins an open defect', () => {
-    const pin = (id: string) =>
-      original.replace('async ({ cartPage }) => {', `async ({ cartPage }) => { test.fail(true, '${id}: limit is 11');`);
+  it('accepts test.fail only when it pins an open defect the file tags', () => {
+    const pin = (id: string, tag = `@${id}`) =>
+      original
+        .replace('async ({ cartPage }) => {', `async ({ cartPage }) => { test.fail(true, '${id}: limit is 11');`)
+        .replace('@BR-CART-01', `@BR-CART-01 ${tag}`);
     expect(kinds(review([changed(pin('DEF-001'))], OPEN, none)), 'pins open DEF-001').not.toContain(
       'suppressed:blocked',
     );
     expect(kinds(review([changed(pin('DEF-999'))], OPEN, none)), 'DEF-999 is not open').toContain('suppressed:blocked');
+    expect(kinds(review([changed(pin('DEF-001', ''))], OPEN, none)), 'open, but the test is not tagged').toContain(
+      'suppressed:blocked',
+    );
+  });
+
+  it('blocks suppressions written with constants, at runtime or as retry loops', () => {
+    const at = (code: string) => original.replace('async () => {', `async () => { ${code}`);
+    for (const after of [
+      at('test.setTimeout(Timeout.TEST * 4);'),
+      at('test.info().skip();'),
+      at("test.describe.configure({ mode: 'serial' });"),
+      original.replace("toHaveValue('10')", "toHaveValue('10', { timeout: Timeout.TEST })"),
+      original.replace(
+        "await expect(cartPage.quantity, 'the server kept 10').toHaveValue('10');",
+        "await expect(async () => { await expect(cartPage.quantity, 'the server kept 10').toHaveValue('10'); }).toPass();",
+      ),
+    ])
+      expect(kinds(review([changed(after)], OPEN, none)), after).toContain('suppressed:blocked');
+  });
+
+  it('sees a skip moved from one test to another', () => {
+    const two = (skipFirst: boolean) =>
+      spec(`
+  test${skipFirst ? '.skip' : ''}('a @BR-CART-01', async () => { await test.step('x', async () => { await expect(a, 'a').toBe(1); }); });
+  test${skipFirst ? '' : '.skip'}('b @BR-CART-01', async () => { await test.step('y', async () => { await expect(b, 'b').toBe(2); }); });`);
+    const moved: Change = { path: SPEC, before: two(true), after: two(false) };
+    expect(kinds(review([moved], OPEN, none))).toContain('suppressed:blocked');
+  });
+
+  it('needs evidence for changed test data — a boundary moved is a hidden failure', () => {
+    const withData = (cents: number) =>
+      original.replace(
+        'async ({ cartPage }) => {',
+        `async ({ cartPage, seed }) => { await seed.product({ priceCents: ${cents} });`,
+      );
+    const moved: Change = { path: SPEC, before: withData(5000), after: withData(5100) };
+    expect(kinds(review([moved], OPEN, none)), 'no document says the price changed').toEqual(['data:blocked']);
+    expect(kinds(review([moved], OPEN, () => 'BR-SHIP-01')), 'documented').toEqual(['data:ok']);
+    const retitled: Change = { path: SPEC, before: withData(5000), after: withData(5000).replace('Then the', 'Then') };
+    expect(kinds(review([retitled], OPEN, none)), 'a step title is not data').toEqual(['maintenance:ok']);
   });
 
   it('treats timeouts config as suppression and schemas as a contract change', () => {

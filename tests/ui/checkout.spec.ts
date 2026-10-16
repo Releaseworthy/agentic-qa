@@ -23,7 +23,7 @@ test.describe('Checkout', { tag: '@FEAT-CHECKOUT' }, () => {
 
       await test.step('Then the order page confirms the placed order', async () => {
         await expect(orderPage.placedBanner, '"Your order has been placed" banner is shown').toBeVisible();
-        await expect(orderPage.status, 'new order status').toHaveText('placed');
+        await expect(orderPage.status, 'a new order starts as placed').toHaveText('placed');
         await expect(orderPage.lines, 'one order line: the product × 2').toHaveCount(1);
         await expect(orderPage.totals.total, 'order total: 2 × $26.00').toHaveText('$52.00');
       });
@@ -49,8 +49,10 @@ test.describe('Checkout', { tag: '@FEAT-CHECKOUT' }, () => {
       });
 
       await test.step('Then the reason is shown and they can retry on checkout', async () => {
-        await expect(checkoutPage.alert, 'payment error').toHaveText('The card was declined');
-        await expect(page, 'still on checkout').toHaveURL(/#\/checkout$/);
+        await expect(checkoutPage.alert, 'the gateway decline reason is shown verbatim (BR-PAY-01)').toHaveText(
+          'The card was declined',
+        );
+        await expect(page, 'a declined payment keeps the customer on checkout').toHaveURL(/#\/checkout$/);
         await expect(checkoutPage.placeOrderButton, '"Place order" is enabled again for a retry').toBeEnabled();
       });
     },

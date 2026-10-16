@@ -27,7 +27,7 @@ type Fixtures = {
   seed: Seed;
   /**
    * A named start state (framework/setup/recipes.ts) — the same one a manual run arranges with
-   * un run qa:arrange --case TC-…. It belongs to the signed-in customer when ccount is NEW_CUSTOMER.
+   * `bun run qa:arrange --case TC-…`. It belongs to the signed-in customer when `account` is NEW_CUSTOMER.
    */
   arrange: <K extends RecipeId>(id: K, params?: RecipeParams<K>) => Promise<Arranged>;
   /** A customer registered for this test only — the signed-in one when `account` is NEW_CUSTOMER. */

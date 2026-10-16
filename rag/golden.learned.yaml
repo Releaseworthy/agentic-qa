@@ -1,3 +1,6 @@
 # Probe questions of accepted knowledge changes, appended by rag.curate. Each one must keep
 # retrieving its document, so a later change cannot make learned knowledge unfindable.
-[]
+- q: How should I edit a TypeScript file from PowerShell on Windows without corrupting backticks?
+  expected:
+    - LRN-NEVER-WRITE-TYPESCRIPT-THROUGH-DOUBLE-QU
+  from: PROP-20261017-ea3c21

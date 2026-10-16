@@ -9,8 +9,9 @@ name: Agentic QA
 #     knowledge (gate + independent judge); accepted lessons arrive as a PR
 # Workflows that write tests or vault documents open a pull request with them.
 #
-# Needs one repository secret: ANTHROPIC_API_KEY, or CLAUDE_CODE_OAUTH_TOKEN
-# (from `claude setup-token`). Without either, the job explains and skips.
+# Secrets: ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`) — without either, the job
+# explains and skips. Optional AGENT_PR_TOKEN (fine-grained PAT or GitHub App token: contents + pull requests
+# write) so the agent's PR triggers CI; without it the publish job dispatches CI on the branch instead.
 
 on:
   workflow_dispatch:
@@ -51,9 +52,11 @@ on:
   pull_request:
     types: [labeled, closed]
 
+# The agent job holds the Claude credentials but only a read-only GitHub token: what it writes leaves as a patch.
+# The publish job, which runs no agent, re-checks the patch with the heal guard, then pushes it and opens the PR.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
+  pull-requests: read
 
 defaults:
   run:
@@ -67,15 +70,19 @@ jobs:
       (github.event.action == 'closed' && github.event.pull_request.merged &&
        !startsWith(github.event.pull_request.head.ref, 'agentic/learn-'))
     name: ${{ inputs.workflow || (github.event.action == 'closed' && 'learn') || 'qa-plan + regression' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: mcr.microsoft.com/playwright:v1.64.1-noble
     timeout-minutes: 60
+    outputs:
+      ran: ${{ steps.auth.outputs.ok }}
+      patch: ${{ steps.patch.outputs.written }}
     env:
       HOME: /root
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       # Decrypts the saved accounts in env/ for the test runs the agents start.
       STRING_HEX_SHOPLITE: ${{ secrets.STRING_HEX_SHOPLITE }}
+      # Read-only (the permissions above): gh pr view / diff and qa:pr-feedback.
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Credentials
@@ -84,10 +91,11 @@ jobs:
           if [ -n "$ANTHROPIC_API_KEY$CLAUDE_CODE_OAUTH_TOKEN" ]; then echo "ok=true" >> "$GITHUB_OUTPUT"; else
             echo "::notice::Set the ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN repository secret to run agentic workflows."
             echo "ok=false" >> "$GITHUB_OUTPUT"; fi
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: steps.auth.outputs.ok == 'true'
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: ./.github/actions/setup
         if: steps.auth.outputs.ok == 'true'
         with:
@@ -104,8 +112,9 @@ jobs:
         if: steps.auth.outputs.ok == 'true' && github.event_name == 'workflow_dispatch'
         run: |
           budget=(); [ -n "$BUDGET" ] && budget=(--budget "$BUDGET")
-          eval "set -- $ARGS"
-          bun run agent "$WORKFLOW" "$@" "${budget[@]}"
+          # xargs splits the input like a shell would (quotes group words) without evaluating it.
+          mapfile -t args < <(printf '%s' "$ARGS" | xargs -r printf '%s\n')
+          bun run agent "$WORKFLOW" "${args[@]}" "${budget[@]}"
         env:
           WORKFLOW: ${{ inputs.workflow }}
           ARGS: ${{ inputs.args }}
@@ -125,40 +134,27 @@ jobs:
         env:
           PR: ${{ github.event.pull_request.number }}
 
-      - name: Comment the summary on the PR
-        if: ${{ !cancelled() && steps.auth.outputs.ok == 'true' && github.event_name == 'pull_request' }}
-        run: |
-          cat out/agent-runs/*/summary.md > out/pr-comment.md
-          gh pr comment "$PR" --body-file out/pr-comment.md
-        env:
-          PR: ${{ github.event.pull_request.number }}
-
       # An agent never ships a test change that hides a failure: removed or weakened assertions, skips and raised
       # timeouts are refused; a new expected value needs the rule/feature/card that states it (qa/heal-guard.ts).
       - name: Heal guard
-        if: ${{ success() && steps.auth.outputs.ok == 'true' && (github.event_name == 'workflow_dispatch' || github.event.action == 'closed') }}
+        if: ${{ success() && steps.auth.outputs.ok == 'true' && github.event.action != 'labeled' }}
         run: bun run qa:heal-guard --base HEAD --result "$(ls -d out/agent-runs/*/ | tail -1)result.json"
 
-      - name: Open a PR with what the agent wrote
-        if: ${{ success() && steps.auth.outputs.ok == 'true' && (github.event_name == 'workflow_dispatch' || github.event.action == 'closed') }}
+      - name: What the agent wrote, as a patch
+        id: patch
+        if: ${{ success() && steps.auth.outputs.ok == 'true' && github.event.action != 'labeled' }}
         run: |
-          git add -A tests framework knowledge rag/golden.learned.yaml
-          if git diff --cached --quiet; then echo "Nothing written."; exit 0; fi
-          branch="agentic/$WORKFLOW-$GITHUB_RUN_NUMBER"
-          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
-            commit -m "agentic-qa: $WORKFLOW $ARGS" -m "Generated by the $WORKFLOW workflow, run $GITHUB_RUN_ID."
-          git push origin "HEAD:$branch"
-          gh pr create --head "$branch" --title "agentic-qa: $WORKFLOW $ARGS" --body-file "$(ls -d out/agent-runs/*/ | tail -1)summary.md"
-        env:
-          WORKFLOW: ${{ inputs.workflow || 'learn' }}
-          ARGS: ${{ inputs.args || github.event.pull_request.number }}
+          git add -A -- tests framework knowledge rag/golden.learned.yaml
+          git diff --cached --binary > out/agent.patch
+          echo "written=$([ -s out/agent.patch ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() && steps.auth.outputs.ok == 'true' }}
         with:
           name: agent-runs
           path: |
             out/agent-runs/
+            out/agent.patch
             out/plans/
             out/ac/
             out/adhoc/
@@ -170,3 +166,61 @@ jobs:
             out/smoke/
             out/*.md
           retention-days: 14
+
+  publish:
+    needs: agent
+    if: ${{ !cancelled() && needs.agent.outputs.ran == 'true' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write # dispatches CI on the agent's branch when no AGENT_PR_TOKEN is set
+    env:
+      # A PAT or GitHub App token makes the agent's PR trigger CI like a human's; GITHUB_TOKEN pushes trigger nothing.
+      GH_TOKEN: ${{ secrets.AGENT_PR_TOKEN || github.token }}
+      OWN_TOKEN: ${{ secrets.AGENT_PR_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.AGENT_PR_TOKEN || github.token }}
+      - uses: actions/download-artifact@v8
+        with:
+          name: agent-runs
+          path: out
+
+      - name: Comment the summary on the PR
+        if: github.event_name == 'pull_request'
+        run: |
+          cat out/agent-runs/*/summary.md > out/pr-comment.md
+          gh pr comment "$PR" --body-file out/pr-comment.md
+        env:
+          PR: ${{ github.event.pull_request.number }}
+
+      - uses: ./.github/actions/setup
+        if: needs.agent.result == 'success' && needs.agent.outputs.patch == 'true'
+
+      - name: Open a PR with what the agent wrote
+        if: needs.agent.result == 'success' && needs.agent.outputs.patch == 'true'
+        run: |
+          # Only the paths an agent may write — whatever else a patch holds is dropped.
+          git apply --index --include='tests/*' --include='framework/*' --include='knowledge/*' \
+            --include='rag/golden.learned.yaml' out/agent.patch
+          if git diff --cached --quiet; then echo "Nothing written."; exit 0; fi
+          result="$(ls -d out/agent-runs/*/ | tail -1)result.json"
+          # Again, outside the agent's job: the patch is checked on its own, not on the agent's word.
+          bun run qa:heal-guard --base HEAD --result "$result"
+          branch="agentic/$WORKFLOW-$GITHUB_RUN_NUMBER"
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "agentic-qa: $WORKFLOW $ARGS" -m "Generated by the $WORKFLOW workflow, run $GITHUB_RUN_ID."
+          git push origin "HEAD:$branch"
+          gh pr create --head "$branch" --title "agentic-qa: $WORKFLOW $ARGS" --body-file "$(ls -d out/agent-runs/*/ | tail -1)summary.md"
+          if [ "$OWN_TOKEN" != "true" ]; then
+            intended="$(sed -nE 's/^Intended-change: ([A-Z]+-[A-Z0-9-]+).*/\1/p' "$(ls -d out/agent-runs/*/ | tail -1)summary.md" | tr '\n' ' ')"
+            gh workflow run ci.yml --ref "$branch" -f full=true -f heal_base="$BASE" -f intended="$intended"
+          fi
+        env:
+          WORKFLOW: ${{ inputs.workflow || 'learn' }}
+          ARGS: ${{ inputs.args || github.event.pull_request.number }}
+          BASE: ${{ github.event.repository.default_branch }}

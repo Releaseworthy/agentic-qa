@@ -38,7 +38,7 @@ test.describe('Order history', { tag: '@FEAT-ORDERS' }, () => {
         });
 
         await test.step('Then it reads cancelled and can no longer be cancelled', async () => {
-          await expect(orderPage.status, 'status after cancelling').toHaveText('cancelled');
+          await expect(orderPage.status, 'the order page shows the cancelled status').toHaveText('cancelled');
           await expect(orderPage.cancelButton, '"Cancel order" is gone once cancelled').toBeHidden();
         });
       },

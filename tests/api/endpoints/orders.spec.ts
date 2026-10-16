@@ -221,7 +221,7 @@ test.describe('POST /api/orders/:id/cancel', { tag: '@FEAT-ORDERS' }, () => {
       const cancelled = await test.step('When the customer cancels it', () => api.as(customer).orders.cancel(order.id));
 
       await test.step('Then it is cancelled and the units are back in stock', async () => {
-        expect(cancelled.status, 'status after cancelling').toBe('cancelled');
+        expect(cancelled.status, 'a placed order can be cancelled (BR-ORD-01)').toBe('cancelled');
         expect((await api.products.get(product.id)).stock, 'the 4 units are back in stock').toBe(10);
       });
     },

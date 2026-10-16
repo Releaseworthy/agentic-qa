@@ -22,7 +22,9 @@ test.describe(
 
       await test.step('The first customer cancels; the order says so and cannot be cancelled again', async () => {
         expect((await api.as(first).orders.cancel(order.id)).status, 'status in the cancel answer').toBe('cancelled');
-        expect((await api.as(first).orders.get(order.id)).status, 'status when read back').toBe('cancelled');
+        expect((await api.as(first).orders.get(order.id)).status, 'the cancellation is stored, not only answered').toBe(
+          'cancelled',
+        );
         await expectRefused(api.as(first).orders.cancel(order.id), 409, 'NOT_CANCELLABLE');
       });
 

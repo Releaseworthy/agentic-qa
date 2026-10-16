@@ -107,12 +107,15 @@ On bash: `export STRING_HEX_SHOPLITE=b4a8856ed96c7f3dbf79c4cd155bb59f59877615922
 | `bun run qa:manual [--check <run.json>]`                 | Manual suite progress from `out/manual-runs/`; validates a run record  |
 | `bun run qa:flaky`                                       | Flake rate per test from a `--repeat-each` run                         |
 | `bun run qa:heal-guard [--base <ref>] [--intended <id>]` | Blocks test changes that hide a failure (see below)                    |
+| `bun run qa:vault`                                       | Vault frontmatter: folders, ids, severities, statuses, references      |
+| `bun run qa:pr-feedback <PR#>`                           | A PR's reviews and comments, from repo members only (for `learn`)      |
 | `bun run kb:audit` / `kb:evaluate <proposal.json>`       | Stale/duplicate/unconfirmed learnings / the knowledge gate, dry run    |
 | `bun run rag:test`                                       | Knowledge-gate tests (pytest)                                          |
 | `bun run rag:build` / `rag:eval` / `rag:serve`           | Index the vault / evaluate retrieval / MCP over HTTP                   |
 | `bun run codesearch "apply coupon"`                      | Hybrid code search (also `--symbol`, `--related`, `--helpers`)         |
 | `bun run qa:arrange <recipe> --name s1 [k=v …]`          | A named precondition + its test data + a state for `playwright-cli`    |
 | `bun run qa:arrange --case TC-… \| --list \| --check`    | A test case's preconditions / the recipes / catalog and cases in sync  |
+| `bun run qa:arrange --stop`                              | Stops the ShopLite `qa:arrange` started in the background              |
 | `'secret' \| bun run crypto encrypt`                     | An `enc1.…` token for `env/` (`keygen`, `decrypt` too)                 |
 | `bun run agent <workflow> [args]`                        | Run a workflow headless (`bun run agent list`)                         |
 
@@ -141,16 +144,29 @@ Lookups and browser exploration run on the light model. Orchestration, authoring
 Independent explorers run in parallel, each with its own seeded data and browser session. Project rules live in
 `CLAUDE.md` and `.claude/rules/`.
 
-`agents/run.ts` runs the same skills headless through the **Claude Agent SDK**. It sets a spend cap, a turn cap and
-pre-approved tools (anything else is denied), takes a JSON-schema result CI can act on, and saves a transcript plus
-cost and per-model usage to `out/agent-runs/<id>/`.
+Each subagent gets only the knowledge tools its role needs (read-only for the scouts, explorers and reviewer). A
+PreToolUse hook (`agents/tool-policy.ts`, wired in `.claude/settings.json`) applies the same rules to every session,
+interactive or headless:
 
-Two real headless runs:
+| Rule                                                                        | Why                                                              |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| only `knowledge-curator` calls `commit_knowledge`                           | the proposer can't judge its own lesson                          |
+| only `qa-writer` calls `upsert_document`                                    | test cases and defects have one author, reviewed                 |
+| `gh` read-only; PR comments via `qa:pr-feedback`                            | anyone can comment on a public repo — outsiders are filtered out |
+| no `git push`/`commit`, no network beyond localhost, no reading credentials | an injected instruction can't publish or leak                    |
+
+`agents/run.ts` runs the same skills headless through the **Claude Agent SDK**. It sets a spend cap, a turn cap and
+pre-approved tools (anything else is denied), takes a zod-defined result CI can act on, and saves a transcript plus
+cost and per-model usage to `out/agent-runs/<id>/`. Agents write and run code, so the hook is not a sandbox: in CI the
+agent job has a read-only GitHub token, and a separate job publishes its patch (see CI/CD).
+
+Three real headless runs:
 
 | Run                                              | Result                                                                                                                                                                                                                                                                                   | Cost  |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
 | `refine-ac CARD-142`                             | 13 questions for Product with proposed defaults, 8 Given/When/Then criteria with boundaries, and conflicts found with the free-shipping and discount-cap rules. Passed review on round 2. [Output](docs/examples/refine-ac-CARD-142.md) · [run](docs/examples/refine-ac-CARD-142.run.md) | $1.17 |
 | `adhoc-test "<cart and order totals>" --defects` | Haiku explorers in 5 parallel browser sessions found **all 4 planted defects**, each confirmed with an API repro and screenshots. [Notes](docs/examples/adhoc-test-seeded-defects.md) · [run](docs/examples/adhoc-test-seeded-defects.run.md)                                            | $0.77 |
+| `learn "<review feedback>"`                      | The full self-improvement loop: no duplicate found, gate passed, the probe ranked the lesson first, the independent curator scored it 4–5 and committed it, and its probe joined the golden set. [Walkthrough](docs/examples/learn-review-feedback.md)                                   | $0.53 |
 
 ### Hybrid RAG: the knowledge vault
 
@@ -166,15 +182,18 @@ rules, work-item cards, defects, manual test cases and review learnings. `rag/` 
   for test cases — adding 14 cases had dropped MRR to 0.773 until this prior went in. The generated setup catalog
   gets the same prior unless the question is about preconditions or test data.
 
-On a 26-question golden set (`rag/golden.yaml`), `bun run rag:eval` compares the three modes, and CI fails if hybrid
-regresses. With `LANGSMITH_API_KEY` set, the run is logged to **LangSmith** as an experiment, and `--answers` adds
-answer quality: Claude answers from the retrieved context only, and an LLM judge scores faithfulness.
+`bun run rag:eval` compares the three modes on two question sets, and CI fails if hybrid regresses. With
+`LANGSMITH_API_KEY` set, the run is logged to **LangSmith** as an experiment, and `--answers` adds answer quality:
+Claude answers from the retrieved context only, and an LLM judge scores faithfulness.
 
-| Mode       | hit@1     | hit@5   | MRR       |
-| ---------- | --------- | ------- | --------- |
-| vector     | 0.615     | 1.0     | 0.758     |
-| graph      | 0.385     | 0.615   | 0.5       |
-| **hybrid** | **0.731** | **1.0** | **0.859** |
+| Mode   | Golden set (26, priors tuned on it): hit@1 · hit@5 · MRR | Held out (14, never tuned on): hit@1 · hit@5 · MRR |
+| ------ | -------------------------------------------------------- | -------------------------------------------------- |
+| vector | 0.615 · 1.0 · 0.758                                      | **0.714 · 1.0 · 0.845**                            |
+| graph  | 0.385 · 0.615 · 0.5                                      | 0.429 · 0.643 · 0.536                              |
+| hybrid | **0.731 · 1.0 · 0.859**                                  | 0.571 · 0.929 · 0.738                              |
+
+The held-out set (`rag/golden.holdout.yaml`) shows that the ranking priors fit the golden set: on new questions
+vector-only ranks better. The next ranking change is judged on fresh held-out questions, never tuned on these.
 
 The **knowledge MCP server** (`rag/server.py`) exposes `search_knowledge`, `get_document`, `related`,
 `list_documents`, `upsert_document` (test cases and defects), `propose_knowledge`, `commit_knowledge` and `audit_knowledge`.
@@ -192,8 +211,9 @@ az containerapp create -n knowledge-mcp -g <rg> --environment <env> \
   --env-vars NEO4J_URI=<bolt-uri> NEO4J_PASSWORD=secretref:neo4j-password MCP_ALLOWED_HOSTS=<app-fqdn>
 ```
 
-The endpoint has no auth of its own. Keep it on an internal network, or turn on Container Apps authentication
-(Entra ID) in front of it.
+Over HTTP the server is **read-only** (search and lookups; `--writable` to opt in): vault changes go through the
+repo's agents and PRs. The endpoint has no auth of its own. Keep it on an internal network, or turn on Container Apps
+authentication (Entra ID) in front of it.
 
 ### Self-improving knowledge
 
@@ -224,7 +244,8 @@ flowchart LR
 | retrieval  | on a throwaway index, a golden question loses its answer, MRR drops > 0.02, or the probe misses the document   |
 
 The judge is a different agent from the proposer and scores **grounded, reusable, actionable, scoped,
-consistent**; `commit_knowledge` enforces the bar, so a failed gate can't be overruled. Learnings carry provenance:
+consistent**; `commit_knowledge` enforces the bar, so a failed gate can't be overruled, and the tool-policy hook lets
+only the curator call it. Learnings carry provenance:
 `confidence: provisional` until human evidence or a second independent source (`support: 2`) makes them
 `established`. Accepted probes join `rag/golden.learned.yaml`, so a later change can't make learned knowledge
 unfindable. Every decision is a line in `knowledge/_curation/ledger.jsonl`. `learn --audit` (`bun run kb:audit`)
@@ -266,11 +287,15 @@ A diff of `app/` is never evidence of intent: the code changing is exactly what 
 enforces this mechanically. It compares tests and framework with the base ref and blocks the following:
 
 - removed or weakened assertions (exact → partial → presence);
-- skips, a `test.fail` without an open defect, hard waits, raised timeouts or retries;
-- a new expected value or API schema, unless `--intended <DOC-ID>` names a document that's on the base branch,
-  unchanged in this diff, and changed after the test.
+- skips (also `test.info().skip()`), a `test.fail` that doesn't pin an open defect the test is tagged with, hard
+  waits, timeouts (literal or constant), `configure()`, `toPass()` or retries — compared per occurrence, so a skip
+  moved to another test counts;
+- a new expected value, changed test data (a price or quantity moved off its boundary) or an API schema change,
+  unless `--intended <DOC-ID>` names a document that's on the base branch, unchanged in this diff, and changed after
+  the test.
 
-It runs before an agent opens a PR and again in CI, where it blocks `agentic/*` branches and reports on the rest.
+It runs in the agent's job, again in the job that publishes the agent's patch, and in CI, where it blocks `agentic/*`
+branches and reports on the rest.
 
 ### Hybrid code search
 
@@ -285,9 +310,14 @@ The agents call these engines instead of deciding by feel. All of them are unit-
 - **Impact analysis.** A changed file maps to features through feature cards (`code:`) and reverse imports up to 3 hops.
   A changed rule maps to its feature. A framework change maps to the specs that use its classes, fixtures or
   properties. Risk = criticality × impact weight × change size × open defects. The output is the `--grep` CI runs on
-  pull requests.
+  pull requests. Unknown impact fails safe: product code no feature card maps, the seed's admin routes and the test
+  hooks run the whole suite.
 - **Traceability.** Each feature and rule is matched to its tagged tests, its manual cases with their latest manual
-  result, and open defects. Rules nothing verifies, and rules only a manual run verifies, are flagged.
+  result, and open defects. Rules nothing verifies, and rules only a manual run verifies, are flagged. A `test.fail`
+  pin or a skipped test doesn't count as verifying a rule.
+- **Vault check.** `qa:vault` validates every document's folder, id pattern, enums and references in CI, and
+  `upsert_document` checks the same on write — a defect can't land on a rule's path, and `severity: High` can't
+  silently drop out of the gate.
 - **Release gate.** NO-GO on a failure (automated or manual) in a critical area, an open critical or high defect (a fix
   nobody retested is still open), a critical rule with neither a test nor a passing manual run, or a pass rate under 95 %. CONDITIONAL GO when only residual risks remain, each listed with its mitigation.
   Otherwise GO.
@@ -347,11 +377,11 @@ its own.
 
 ### CI/CD
 
-| Pipeline                                       | Runs                                                                                                                                                                                                                                                                                                                                                                          |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [QA pipeline](.github/workflows/ci.yml)        | Lint, types, format and unit tests · recipe catalog and test-case setups in sync · heal guard on PRs · RAG build + eval (local graph and Neo4j service) · impact selection on PRs · API, Chromium ×2 shards, Firefox and WebKit in the Playwright image · staging smoke and live read-only · seeded-defect detection · merged report → traceability → Go/No-Go → GitHub Pages |
-| [Agentic QA](.github/workflows/agentic-qa.yml) | On demand, any workflow. On a PR labelled `agentic-qa`: a test plan, then regression, with the summary posted on the PR. Workflows that write open a PR with the result, after the heal guard passes.                                                                                                                                                                         |
-| [azure-pipelines.yml](azure-pipelines.yml)     | The same on Azure DevOps: parallel regression published to Test Runs, the gate, and the Agent SDK regression stage                                                                                                                                                                                                                                                            |
+| Pipeline                                       | Runs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [QA pipeline](.github/workflows/ci.yml)        | Lint, types, format and unit tests · recipe catalog, test-case setups and vault frontmatter valid · heal guard on PRs · RAG build + eval, golden and held-out (local graph and Neo4j service) · impact selection on PRs · API, Chromium ×2 shards, Firefox and WebKit in the Playwright image · staging smoke and live read-only · seeded-defect detection · merged report → traceability → Go/No-Go → GitHub Pages                                                                          |
+| [Agentic QA](.github/workflows/agentic-qa.yml) | On demand, any workflow. On a PR labelled `agentic-qa`: a test plan, then regression. On a merged PR: `learn`. The **agent job** has a read-only GitHub token and hands what it wrote over as a patch; the **publish job** runs no agent, applies only `tests/`, `framework/`, `knowledge/` from the patch, re-runs the heal guard, opens the PR and posts the summary. With an `AGENT_PR_TOKEN` secret the PR triggers CI itself; without one, the publish job dispatches CI on the branch. |
+| [azure-pipelines.yml](azure-pipelines.yml)     | The same on Azure DevOps (`.azure/setup.yml` installs the tools): checks, parallel regression published to Test Runs, the gate, and the Agent SDK regression stage. The GitHub workflows are the ones run on every push.                                                                                                                                                                                                                                                                     |
 
 ## Project structure
 
@@ -365,15 +395,16 @@ its own.
 ├─ knowledge/           vault: product, features, rules, cards, defects, test-cases, learnings, setup (generated) ·
 │                       _curation/ (decision ledger, proposals waiting for a human)
 ├─ rag/                 Hybrid RAG (Python/uv): vault loader, ChromaDB, graph (local/Neo4j), fusion, MCP server,
-│                       eval (+ learned probes), knowledge gate (curate.py), Dockerfile
+│                       eval (+ learned probes, held-out set), knowledge gate (curate.py), Dockerfile
 ├─ codesearch/          ripgrep + import/symbol graph, CLI and MCP server
 ├─ qa/                  impact · traceability · release gate · seeded-defect detection · defect triage ·
-│                       manual runs · flakiness · heal guard
-├─ agents/              Claude Agent SDK runner and workflow registry
+│                       manual runs · flakiness · heal guard · vault check · PR feedback (members only)
+├─ agents/              Claude Agent SDK runner, workflow registry, tool policy (+ its PreToolUse hook)
 ├─ .claude/             skills/ (19 workflows) · agents/ (8 subagents) · rules/ · settings.json
 ├─ docs/examples/       outputs of real runs
 ├─ scripts/             crypto CLI (encrypt / decrypt / keygen), GitHub Pages landing page
 ├─ .github/             CI workflows, setup action
+├─ .azure/              setup step template for the Azure pipeline
 ├─ azure-pipelines.yml  Azure DevOps pipeline
 ├─ docker-compose.yml   knowledge MCP + Neo4j
 ├─ .mcp.json            knowledge + codesearch MCP servers for Claude Code

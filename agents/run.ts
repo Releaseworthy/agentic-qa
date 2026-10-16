@@ -26,12 +26,18 @@ import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { query, type Options, type SDKMessage, type SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
-import { RESULT_SCHEMA, WORKFLOWS, type WorkflowName, type WorkflowResult } from '@agents/workflows';
+import { RESULT_SCHEMA, WORKFLOWS, WorkflowResult, type WorkflowName } from '@agents/workflows';
 import { DateFormat, formatDate, now } from '@utils/date';
+import { z } from 'zod';
 
 const ROOT = join(import.meta.dir, '..');
 
-/** Pre-approved tools: everything a workflow needs, nothing that leaves the repo (no push, no network fetches). */
+/**
+ * Pre-approved tools; anything else is denied. The project's PreToolUse hook (.claude/settings.json →
+ * agents/tool-policy.ts) narrows them further: knowledge writes by role, a read-only gh, no pushes, no network
+ * beyond localhost. Agents write and run code (specs, repro scripts), so this is not a sandbox — CI runs the agent
+ * with a read-only GitHub token and opens the PR in a separate job.
+ */
 const ALLOWED_TOOLS = [
   'Read',
   'Write',
@@ -113,7 +119,8 @@ const transcript = join(dir, 'transcript.jsonl');
 
 const options: Options = {
   cwd: ROOT,
-  // CLAUDE.md, .claude/skills, .claude/agents and .claude/settings.json from the repo — not the machine's user settings.
+  // CLAUDE.md, .claude/skills, .claude/agents and .claude/settings.json (with the tool-policy hook) from the repo —
+  // not the machine's user settings.
   settingSources: ['project'],
   model: values.model,
   fallbackModel: 'sonnet',
@@ -180,7 +187,11 @@ if (!result) {
   process.exit(1);
 }
 
-const structured = result.subtype === 'success' ? (result.structured_output as WorkflowResult | undefined) : undefined;
+// The SDK enforces the schema on the model; this catches a run that ended without (or with a broken) result.
+const parsed = result.subtype === 'success' ? WorkflowResult.safeParse(result.structured_output) : undefined;
+if (parsed && !parsed.success)
+  console.error(`structured result does not match the schema:\n${z.prettifyError(parsed.error)}`);
+const structured = parsed?.success ? parsed.data : undefined;
 const record = {
   runId,
   workflow: name,

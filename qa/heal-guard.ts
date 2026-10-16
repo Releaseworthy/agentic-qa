@@ -7,9 +7,11 @@
  * Findings, per changed file:
  *   removed      an assertion or a test is gone                                   never allowed
  *   weakened     an assertion lost strength (exact value → partial → presence)    never allowed
- *   suppressed   skip / fixme / only / slow, a test.fail without an open DEF-,
- *                hard waits, timeouts or retries raised                            never allowed
+ *   suppressed   skip / fixme / only / slow (also at runtime), a test.fail that
+ *                doesn't pin an open DEF- the file tags, hard waits, timeouts,
+ *                retries, configure(), toPass() — each occurrence, not a count     never allowed
  *   expected     an assertion's expected value, a `not`, or a test title changed  only with intended-change evidence
+ *   data         a literal the test arranges with (price, quantity, code)         only with intended-change evidence
  *   contract     an API schema changed (framework/api/schemas.ts)                 only with intended-change evidence
  *   maintenance  a locator or subject renamed, page objects, helpers, recipes    allowed — listed
  *
@@ -25,13 +27,13 @@ import { parseArgs } from 'node:util';
 import { table, writeReport } from '@qa/report';
 import { ROOT, Vault, isOpen, type Doc } from '@qa/vault';
 
-export type Kind = 'removed' | 'weakened' | 'suppressed' | 'expected' | 'contract' | 'maintenance';
+export type Kind = 'removed' | 'weakened' | 'suppressed' | 'expected' | 'data' | 'contract' | 'maintenance';
 export type Finding = { file: string; kind: Kind; detail: string; allowed: boolean; evidence?: string };
 export type Change = { path: string; before: string; after: string };
 
 /** Never allowed, whatever the evidence. */
 const FORBIDDEN: ReadonlySet<Kind> = new Set(['removed', 'weakened', 'suppressed']);
-const NEEDS_EVIDENCE: ReadonlySet<Kind> = new Set(['expected', 'contract']);
+const NEEDS_EVIDENCE: ReadonlySet<Kind> = new Set(['expected', 'data', 'contract']);
 const EVIDENCE_TYPES: ReadonlySet<string> = new Set(['rule', 'feature', 'card', 'overview']);
 
 const SCHEMAS = 'framework/api/schemas.ts';
@@ -181,10 +183,6 @@ export function testTitles(src: string): string[] {
   );
 }
 
-function count(s: string, re: RegExp): number {
-  return [...s.matchAll(re)].length;
-}
-
 // ---- comparing ------------------------------------------------------------------------------------------
 
 /** Removes `x` from `xs` (one occurrence); true if it was there. */
@@ -231,18 +229,65 @@ function compareAssertions(file: string, before: Assertion[], after: Assertion[]
 
 const SUPPRESSIONS: [RegExp, string][] = [
   [/\b(?:test|describe)(?:\.describe)?\.(?:skip|fixme|only|slow)\s*\(/g, 'skip / fixme / only / slow'],
+  [/\b(?:testInfo|test\.info\(\))\s*\.\s*(?:skip|fixme|fail|slow)\s*\(/g, 'skip / fixme / fail / slow at runtime'],
   [/\bwaitForTimeout\s*\(/g, 'a hard wait (waitForTimeout)'],
-  [/\bsetTimeout\s*\(\s*\d/g, 'test.setTimeout'],
-  [/\btimeout\s*:\s*\d/g, 'an explicit timeout'],
+  [/\bsetTimeout\s*\(/g, 'a timeout or a hard wait (setTimeout)'],
+  [/\btimeout\s*:/g, 'an explicit timeout'],
   [/\bretries\s*:/g, 'retries'],
+  [/\.configure\s*\(/g, 'test / expect configuration (retries, mode, timeouts)'],
+  [/\.toPass\s*\(/g, 'a retry loop (toPass)'],
 ];
 
-/** `test.fail(…)` calls that don't name an open defect. */
+/**
+ * Each occurrence as written — the whole call, or the `key: value` — so a suppression moved to another test, or
+ * a timeout raised from one value to another, counts as a new one.
+ */
+function occurrences(s: string, re: RegExp): string[] {
+  return [...s.matchAll(re)].map((m) => {
+    const end = m.index + m[0].length;
+    if (m[0].endsWith('(')) return s.slice(m.index, close(s, end - 1));
+    const stop = s.slice(end).search(/[,}]/);
+    return s.slice(m.index, stop < 0 ? s.length : end + stop);
+  });
+}
+
+/** Items of `after` that `before` doesn't have (multiset difference). */
+function added(before: string[], after: string[]): string[] {
+  const left = [...before];
+  return after.filter((x) => !take(left, (y) => y === x));
+}
+
+/** `test.fail(…)` calls that don't pin an open defect the file also tags (`@DEF-…`). */
 function unpinnedFails(src: string, openDefects: ReadonlySet<string>): string[] {
   const s = normalize(src);
   return [...s.matchAll(/\btest\.fail\s*\(([^)]*)\)/g)]
     .map((m) => m[1] ?? '')
-    .filter((args) => !(/DEF-\d+/.exec(args) && openDefects.has(/DEF-\d+/.exec(args)?.[0] ?? '')));
+    .filter((args) => {
+      const id = /DEF-\d+/.exec(args)?.[0];
+      return !(id && openDefects.has(id) && s.includes(`@${id}`));
+    });
+}
+
+/**
+ * Test data a file states outside its assertions, titles, tags and imports: string and number literals in specs
+ * (`priceCents: 2500`, `setQuantity(name, 11)`, `'WELCOME10'`), numbers in seed / recipe / card defaults. Changing
+ * them can move a test off the boundary it exists for, so it needs the same evidence as a new expected value.
+ */
+export function dataLiterals(path: string, src: string): string[] {
+  const spec = path.startsWith('tests/');
+  if (!spec && !/^framework\/(setup\/(seed|recipes)\.ts|data\/)/.test(path)) return [];
+  let s = normalize(src);
+  for (const a of assertions(src)) s = s.replace(a.text, ' ');
+  s = s
+    .replace(/\bimport\s[^;]*;/g, ' ')
+    .replace(/\btest\.fail\s*\([^)]*\)/g, ' ')
+    .replace(/\btag\s*:\s*(?:\[[^\]]*\]|'[^']*'|"[^"]*")/g, ' ')
+    .replace(/\b(test(?:\.\w+)?|describe|step)\s*\(\s*(['"`])(?:\\.|(?!\2).)*\2/g, '$1(');
+  const strings = spec ? [...s.matchAll(/(['"`])(?:\\.|(?!\1).)*\1/g)].map((m) => m[0]) : [];
+  const numbers = [...s.replace(/(['"`])(?:\\.|(?!\1).)*\1/g, ' ').matchAll(/(?<![\w$.])\d[\d_]*(?:\.\d+)?/g)].map(
+    (m) => m[0],
+  );
+  return [...strings, ...numbers];
 }
 
 /** What changed in one file, before evidence is applied. */
@@ -259,9 +304,22 @@ export function classify(change: Change, openDefects: ReadonlySet<string>): Omit
   const nb = normalize(before);
   const na = normalize(after);
   for (const [re, what] of SUPPRESSIONS)
-    if (count(na, re) > count(nb, re)) out.push({ file: path, kind: 'suppressed', detail: `added ${what}` });
-  const newFails = unpinnedFails(after, openDefects).length - unpinnedFails(before, openDefects).length;
-  if (newFails > 0) out.push({ file: path, kind: 'suppressed', detail: 'test.fail without an open DEF- id' });
+    if (added(occurrences(nb, re), occurrences(na, re)).length)
+      out.push({ file: path, kind: 'suppressed', detail: `added ${what}` });
+  if (added(unpinnedFails(before, openDefects), unpinnedFails(after, openDefects)).length)
+    out.push({ file: path, kind: 'suppressed', detail: 'test.fail without an open DEF- id the file tags' });
+
+  const dataBefore = dataLiterals(path, before);
+  const dataAfter = dataLiterals(path, after);
+  const dropped = added(dataAfter, dataBefore);
+  if (dropped.length) {
+    const fresh = added(dataBefore, dataAfter);
+    out.push({
+      file: path,
+      kind: 'data',
+      detail: `test data changed: ${dropped.slice(0, 6).join(', ')} → ${fresh.slice(0, 6).join(', ') || '(removed)'}`,
+    });
+  }
 
   const tb = testTitles(before);
   const ta = testTitles(after);

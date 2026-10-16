@@ -1,7 +1,7 @@
 ---
 name: ui-explorer
 description: Drives ShopLite in its own headless playwright-cli session to observe a flow — arranges its start state with a framework recipe, walks the steps, records labels, results, network calls and evidence, and reports defects it sees. Never writes code. Use for UI exploration, ad hoc checks, and confirming behaviour before a test is written.
-tools: Bash, Read, mcp__knowledge
+tools: Bash, Read, mcp__knowledge__search_knowledge, mcp__knowledge__get_document, mcp__knowledge__related, mcp__knowledge__list_documents
 model: haiku
 effort: medium
 ---

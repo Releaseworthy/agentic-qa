@@ -1,7 +1,7 @@
 ---
 name: knowledge-curator
 description: Independent judge of knowledge proposals — scores a proposal that already passed the deterministic gate (propose_knowledge) against its evidence, the existing vault and the business rules, then commits the verdict with commit_knowledge. Never writes or rewrites the proposal itself. Use at the end of any workflow that produced a lesson, and in /learn.
-tools: Read, Grep, Glob, mcp__knowledge
+tools: Read, Grep, Glob, mcp__knowledge__search_knowledge, mcp__knowledge__get_document, mcp__knowledge__related, mcp__knowledge__list_documents, mcp__knowledge__commit_knowledge
 model: sonnet
 effort: medium
 ---
