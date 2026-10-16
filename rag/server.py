@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -22,7 +23,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from rag import curate
 from rag.build import index_document, rebuild_graph
 from rag.config import KNOWLEDGE_DIR, ROOT
-from rag.curate import GENERATED, QA_ARTIFACTS
+from rag.curate import GENERATED
 from rag.graph import GraphStore, open_graph
 from rag.hybrid import SCOPES, HybridRetriever, Mode
 from rag.vault import Document, load_vault, parse
@@ -56,6 +57,13 @@ class State:
 
 
 _state: State | None = None
+# The shared HTTP endpoint answers questions; it doesn't take writes unless started with --writable.
+READ_ONLY = False
+
+
+def _writable() -> None:
+    if READ_ONLY:
+        raise ValueError("this knowledge endpoint is read-only — vault changes go through the repo's agents and PRs")
 
 
 def state() -> State:
@@ -148,6 +156,41 @@ def _write(path: Path, content: str) -> dict[str, Any]:
     return {"id": doc.id, "path": doc.path, "chunks": chunks, "index_ok": True, "warnings": [f"unknown link [[{u}]]" for u in unknown]}
 
 
+# Where each QA artifact lives, its id, and the enums the QA engines rank on (qa/vault-check.ts checks the whole vault).
+ARTIFACTS: dict[str, dict[str, Any]] = {
+    "defect": {
+        "folder": "knowledge/defects/",
+        "id": re.compile(r"^DEF-\d{3,}$"),
+        "enums": {
+            "status": {"new", "confirmed", "open", "fixed", "reopened", "closed", "rejected"},
+            "severity": {"critical", "high", "medium", "low"},
+        },
+    },
+    "test-case": {
+        "folder": "knowledge/test-cases/",
+        "id": re.compile(r"^TC-[A-Z]+-\d{3}$"),
+        "enums": {"priority": {"critical", "high", "medium", "low"}, "status": {"draft", "ready", "outdated", "deprecated"}},
+    },
+}
+
+
+def check_artifact(path: str, doc: Document) -> None:
+    """Raises unless `doc` is a QA artifact in its own folder, with its own id pattern and valid enums — so a write
+    can never land on a rule, feature or card, whatever type the content claims."""
+    if doc.type in GENERATED:
+        raise ValueError(f"a {doc.type} document is generated from code: change framework/setup/recipes.ts, then bun run qa:arrange --catalog")
+    spec = ARTIFACTS.get(doc.type)
+    if spec is None:
+        raise ValueError(f"upsert_document writes test cases and defects; a {doc.type} goes through propose_knowledge")
+    if not path.replace("\\", "/").startswith(spec["folder"]):
+        raise ValueError(f"a {doc.type} lives in {spec['folder']}")
+    if not spec["id"].match(doc.id):
+        raise ValueError(f"a {doc.type} id matches {spec['id'].pattern}, got {doc.id!r}")
+    for key, allowed in spec["enums"].items():
+        if str(doc.meta.get(key)) not in allowed:
+            raise ValueError(f"{key} is one of {sorted(allowed)}, got {doc.meta.get(key)!r}")
+
+
 @server.tool()
 def upsert_document(path: str, content: str) -> dict[str, Any]:
     """Create or replace a QA artifact — a manual test case or a defect (full Markdown with frontmatter) — and re-index it.
@@ -155,11 +198,9 @@ def upsert_document(path: str, content: str) -> dict[str, Any]:
     path is repo-relative, e.g. `knowledge/test-cases/TC-CART-002-merge-lines.md`. Anything else is
     knowledge: propose it with propose_knowledge.
     """
+    _writable()
     doc = parse(ROOT / path, content)
-    if doc.type in GENERATED:
-        raise ValueError(f"a {doc.type} document is generated from code: change framework/setup/recipes.ts, then bun run qa:arrange --catalog")
-    if doc.type not in QA_ARTIFACTS:
-        raise ValueError(f"upsert_document writes test cases and defects; a {doc.type} goes through propose_knowledge")
+    check_artifact(path, doc)
     return _write(ROOT / path, content)
 
 
@@ -201,6 +242,7 @@ def propose_knowledge(
         "target": target,
         "applies_to": applies_to or [],
     }
+    _writable()
     ev, _, _ = curate.evaluate(raw, state().docs)
     curate.save_pending(ev, raw)
     neighbours = [{**n, "title": d.title, "body": d.body[:800]} for n in ev.neighbours if (d := _doc(n["id"]))]
@@ -226,6 +268,7 @@ def commit_knowledge(proposal_id: str, verdict: str, scores: dict[str, int], rat
     """
     if verdict not in ("accept", "reject", "needs_human"):
         raise ValueError("verdict is accept, reject or needs_human")
+    _writable()
     out = curate.decide(proposal_id, verdict, scores, rationale, judge)  # type: ignore[arg-type]
     result: dict[str, Any] = {"decision": out.decision, "doc_id": out.doc_id, "reason": out.reason}
     if out.write:
@@ -247,7 +290,10 @@ def main() -> None:
     parser.add_argument("--http", action="store_true", help="serve streamable HTTP instead of stdio")
     parser.add_argument("--host", default=os.environ.get("HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8765")))
+    parser.add_argument("--writable", action="store_true", help="over HTTP, also accept writes (default: read-only)")
     args = parser.parse_args()
+    global READ_ONLY
+    READ_ONLY = args.http and not (args.writable or os.environ.get("MCP_WRITABLE") == "1")
     state()  # load the index before the first request
     if args.http:
         # Deployed behind a public host name: only those Host headers are served (DNS-rebinding protection).

@@ -9,6 +9,7 @@
  *   bun run qa:arrange --list [--json]                      the recipes and their params
  *   bun run qa:arrange --catalog [--check]                  (re)write / verify knowledge/setup/SETUP-RECIPES.md
  *   bun run qa:arrange --check                              catalog up to date, every test case arranges via a recipe
+ *   bun run qa:arrange --stop                               stop the ShopLite this CLI started for TEST_ENV
  *
  *   --defects <ids|all|none>   switch the app's seeded defects (app/defects.ts) — practice targets
  *
@@ -17,7 +18,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { YAML } from 'bun';
@@ -39,6 +40,9 @@ async function healthy(): Promise<boolean> {
   }
 }
 
+/** The background ShopLite this CLI started for TEST_ENV, so `--stop` can end it. */
+const PID_FILE = join(ROOT, 'out', 'sessions', `.app-${env.name}.pid`);
+
 async function ensureServer(): Promise<boolean> {
   if (await healthy()) return false;
   if (!env.startApp)
@@ -47,9 +51,12 @@ async function ensureServer(): Promise<boolean> {
     cwd: ROOT,
     detached: true,
     stdio: 'ignore',
+    windowsHide: true,
     env: process.env,
   });
   child.unref();
+  mkdirSync(dirname(PID_FILE), { recursive: true });
+  writeFileSync(PID_FILE, String(child.pid));
   for (let i = 0; i < 50 && !(await healthy()); i++) await Bun.sleep(toMs({ seconds: 0.2 }));
   if (!(await healthy())) throw new Error(`ShopLite did not start at ${env.baseUrl}`);
   return true;
@@ -97,8 +104,29 @@ const { values, positionals } = parseArgs({
     json: { type: 'boolean' },
     catalog: { type: 'boolean' },
     check: { type: 'boolean' },
+    stop: { type: 'boolean' },
   },
 });
+
+// A session name becomes file names under out/sessions/ and a playwright-cli session.
+if (!/^[a-z0-9][a-z0-9-]{0,40}$/.test(values.name))
+  throw new Error(`--name "${values.name}": lower-case letters, digits and dashes (explorer-coupon)`);
+
+if (values.stop) {
+  if (!existsSync(PID_FILE)) {
+    console.log(`no background ShopLite started by qa:arrange for TEST_ENV=${env.name}`);
+    process.exit(0);
+  }
+  const pid = Number(readFileSync(PID_FILE, 'utf8'));
+  try {
+    process.kill(pid);
+    console.log(`stopped ShopLite (${env.name}, pid ${pid})`);
+  } catch {
+    console.log(`ShopLite (${env.name}, pid ${pid}) was not running`);
+  }
+  rmSync(PID_FILE);
+  process.exit(0);
+}
 
 if (values.check && !values.catalog) process.exit(check());
 if (values.catalog) {

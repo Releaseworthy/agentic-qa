@@ -1,7 +1,7 @@
 ---
 name: qa-writer
 description: Writes and updates QA documents in the knowledge vault through the knowledge MCP — manual test cases (knowledge/test-cases) and defect reports with their lifecycle (knowledge/defects) — from verified evidence handed over by explorers, testers and authors. Use after exploration, a manual run, a failing test or a bug verification/retest — never to invent behaviour.
-tools: Read, mcp__knowledge
+tools: Read, mcp__knowledge__search_knowledge, mcp__knowledge__get_document, mcp__knowledge__related, mcp__knowledge__list_documents, mcp__knowledge__upsert_document
 model: sonnet
 effort: medium
 ---

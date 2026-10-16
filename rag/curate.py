@@ -392,7 +392,13 @@ def save_pending(ev: Evaluation, raw: dict[str, Any]) -> None:
     )
 
 
+PROPOSAL_ID = re.compile(r"^PROP-\d{8}-[0-9a-f]{6}$")
+
+
 def load_pending(proposal_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    # The id becomes a file name (read here, deleted after the decision): only ids evaluate() hands out.
+    if not PROPOSAL_ID.match(proposal_id):
+        raise ValueError(f"not a proposal id: {proposal_id!r} (PROP-YYYYMMDD-xxxxxx)")
     path = PENDING_DIR / f"{proposal_id}.json"
     if not path.exists():
         raise ValueError(f"no pending proposal {proposal_id} — evaluate it with propose_knowledge first")

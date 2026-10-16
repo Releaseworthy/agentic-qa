@@ -1,0 +1,46 @@
+# Held-out retrieval questions: written after the ranking priors (DERIVED_WEIGHT in rag/hybrid.py) were tuned on
+# rag/golden.yaml, and never used to tune anything. `bun run rag:eval` reports them separately, so the headline
+# numbers are not only in-sample. Add questions here; never change the ranking to make one of these pass.
+
+- q: If my card expires at the end of this month, can I still pay with it?
+  expected: [BR-PAY-01]
+  facts: ['end of its expiry month']
+- q: What error do I get when I try to add an eleventh unit of the same product?
+  expected: [BR-CART-01]
+  facts: ['422', 'QTY_LIMIT']
+- q: Can a customer put more units in the cart than the shop has in stock?
+  expected: [BR-CART-02]
+  facts: ['OUT_OF_STOCK']
+- q: Which status code does an expired coupon return?
+  expected: [BR-COUP-03]
+  facts: ['410']
+- q: Can a fixed coupon take off more than the cart is worth?
+  expected: [BR-COUP-04]
+  facts: ['subtotal']
+- q: Does the catalog search look at product descriptions or only names?
+  expected: [FEAT-CATALOG]
+  facts: ['description']
+- q: Which other features does checkout depend on?
+  expected: [FEAT-CHECKOUT]
+  facts: ['FEAT-CART', 'FEAT-COUPON']
+- q: Why is a country code like "us" refused at checkout?
+  expected: [DEF-001]
+  facts: ['lower-case']
+- q: Which bug let a cart line go above ten units through PATCH?
+  expected: [DEF-002]
+  facts: ['PATCH']
+- q: Is there a manual test case for paying with a declined card?
+  expected: [TC-CHK-001]
+  facts: ['TC-CHK-001']
+- q: Which manual case checks that cancelled items return to stock?
+  expected: [TC-ORD-001, BR-ORD-02]
+  facts: ['TC-ORD-001']
+- q: How do I start a manual run from an order that has already shipped?
+  expected: [SETUP-RECIPES]
+  facts: ['status=shipped']
+- q: Can someone register with a password that has no digits?
+  expected: [BR-AUTH-01]
+  facts: ['digit']
+- q: What makes a coupon drop off a cart after it was applied?
+  expected: [BR-COUP-02]
+  facts: ['minimum']

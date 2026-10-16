@@ -12,6 +12,15 @@ on:
         description: Run every test, ignoring change impact
         type: boolean
         default: true
+      # Set by the Agentic QA workflow for the PR it opens: a push with GITHUB_TOKEN triggers no pull_request run.
+      heal_base:
+        description: Run the heal guard against this base branch (agent PRs)
+        type: string
+        default: ''
+      intended:
+        description: Intended-change document ids for the heal guard, space-separated
+        type: string
+        default: ''
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -31,10 +40,10 @@ defaults:
 jobs:
   checks:
     name: lint · types · format · unit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - run: bun run lint
       - run: bun run typecheck
@@ -42,31 +51,37 @@ jobs:
       - run: bun run test:unit
       - name: Recipe catalog current, every manual case arranges via a recipe
         run: bun run qa:arrange --check
+      - name: Vault frontmatter valid (ids, folders, severities, statuses, links to features and rules)
+        run: bun run qa:vault
 
   heal-guard:
     name: heal guard
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || inputs.heal_base != ''
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
-      # Blocking for agent branches (evidence from the PR body's Intended-change: <id> lines); a report for humans.
+      # Blocking for agent branches (evidence from the PR body's Intended-change: <id> lines, or the dispatch
+      # input); a report for humans.
       - name: Test changes follow documented behaviour
         run: |
           args=()
-          while read -r id; do [ -n "$id" ] && args+=(--intended "$id"); done < <(printf '%s\n' "$BODY" | sed -nE 's/^Intended-change: ([A-Z]+-[A-Z0-9-]+).*/\1/p')
+          while read -r id; do [ -n "$id" ] && args+=(--intended "$id"); done < <(
+            printf '%s\n' "$BODY" | sed -nE 's/^Intended-change: ([A-Z]+-[A-Z0-9-]+).*/\1/p'
+            printf '%s\n' $INTENDED | grep -E '^[A-Z]+-[A-Z0-9-]+$' || true)
           bun run qa:heal-guard --base "origin/$BASE" "${args[@]}" || [[ "$HEAD" != agentic/* ]]
         env:
-          BASE: ${{ github.base_ref }}
-          HEAD: ${{ github.head_ref }}
+          BASE: ${{ github.base_ref || inputs.heal_base }}
+          HEAD: ${{ github.head_ref || github.ref_name }}
           BODY: ${{ github.event.pull_request.body }}
+          INTENDED: ${{ inputs.intended }}
 
   rag:
     name: hybrid RAG · ${{ matrix.graph }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -86,7 +101,7 @@ jobs:
       NEO4J_PASSWORD: ci-password
       LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
         with:
           python: 'true'
@@ -97,7 +112,7 @@ jobs:
       - name: Knowledge gate tests (curation)
         if: matrix.graph == 'local'
         run: bun run rag:test
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: rag-eval-${{ matrix.graph }}
@@ -105,14 +120,14 @@ jobs:
 
   impact:
     name: change impact
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       grep: ${{ steps.impact.outputs.grep }}
       full: ${{ steps.mode.outputs.full }}
       none: ${{ steps.impact.outputs.none }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
@@ -124,7 +139,7 @@ jobs:
         run: bun run qa:impact --base "origin/$BASE"
         env:
           BASE: ${{ github.base_ref }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: github.event_name == 'pull_request'
         with:
           name: impact
@@ -134,7 +149,7 @@ jobs:
     name: ${{ matrix.project }}${{ matrix.shard != '1/1' && format(' · {0}', matrix.shard) || '' }}
     needs: impact
     if: needs.impact.outputs.full == 'true' || needs.impact.outputs.none != 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: mcr.microsoft.com/playwright:v1.64.1-noble
     timeout-minutes: 20
     strategy:
@@ -149,7 +164,7 @@ jobs:
     env:
       HOME: /root
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Test
         run: |
@@ -162,7 +177,7 @@ jobs:
           FULL: ${{ needs.impact.outputs.full }}
           GREP: ${{ needs.impact.outputs.grep }}
           PLAYWRIGHT_BLOB_OUTPUT_NAME: ${{ matrix.project }}-${{ strategy.job-index }}.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: blob-${{ matrix.project }}-${{ strategy.job-index }}
@@ -171,7 +186,7 @@ jobs:
 
   environments:
     name: ${{ matrix.env }} · ${{ matrix.env == 'live' && 'read-only' || 'smoke' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     container: mcr.microsoft.com/playwright:v1.64.1-noble
     timeout-minutes: 10
     strategy:
@@ -182,7 +197,7 @@ jobs:
       HOME: /root
       TEST_ENV: ${{ matrix.env }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       # Each env file starts its local stand-in (START_APP); live runs only the @readonly tests.
       - name: Test ${{ matrix.env }}
@@ -190,10 +205,10 @@ jobs:
 
   defects:
     name: seeded-defect detection
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Every seeded defect must be caught by the suite
         run: bun run qa:defects
@@ -202,14 +217,14 @@ jobs:
     name: traceability · release gate
     needs: [tests, defects]
     if: ${{ !cancelled() && needs.tests.result != 'skipped' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
       decision: ${{ steps.gate.outputs.decision }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v8
         with:
           pattern: blob-*
           path: all-blob-reports
@@ -231,14 +246,14 @@ jobs:
           cp -r playwright-report site/report
           cp out/release-gate.md out/traceability.md out/triage.md site/
           bun run scripts/site-index.ts site
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: qa-report
           path: |
             site/
             out/*.json
           retention-days: 30
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v5
         if: github.ref == 'refs/heads/main'
         with:
           path: site
@@ -247,7 +262,7 @@ jobs:
     name: publish report
     needs: report
     if: ${{ !cancelled() && needs.report.result == 'success' && github.ref == 'refs/heads/main' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       pages: write
       id-token: write
@@ -256,4 +271,4 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

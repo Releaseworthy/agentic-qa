@@ -1,7 +1,7 @@
 ---
 name: test-author
 description: Writes and fixes Playwright specs (API endpoint, API journey, UI) and the page-object or helper code they need, grounded in the vault and existing framework code, and validates them with a focused run, typecheck and lint. Use for test generation, automation of manual cases, and test maintenance.
-tools: Read, Write, Edit, Bash, Grep, Glob, mcp__knowledge, mcp__codesearch
+tools: Read, Write, Edit, Bash, Grep, Glob, mcp__knowledge__search_knowledge, mcp__knowledge__get_document, mcp__knowledge__related, mcp__knowledge__list_documents, mcp__codesearch
 model: opus
 effort: high
 ---

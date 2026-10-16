@@ -1,7 +1,7 @@
 ---
 name: knowledge-scout
 description: Answers business questions about ShopLite from the knowledge vault (features, rules, cards, defects, test cases, learnings) with document ids as evidence. Read-only. Use for "what should happen when…", boundaries, error codes, open defects, existing manual cases.
-tools: mcp__knowledge, Read
+tools: mcp__knowledge__search_knowledge, mcp__knowledge__get_document, mcp__knowledge__related, mcp__knowledge__list_documents, Read
 model: haiku
 effort: low
 ---

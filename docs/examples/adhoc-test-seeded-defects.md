@@ -16,6 +16,11 @@ Build: seeded defects `all`. These findings are planted on purpose: notes only, 
 - BR-ORD-01 / BR-ORD-02: only placed orders can be cancelled; a cancel restocks every line.
 
 ## Start states
+
+> Recorded before `seed:session` was replaced by framework recipes. Today the same states are
+> `bun run qa:arrange cart --name explorer-totals priceCents=1000 stock=50 quantity=1` and
+> `bun run qa:arrange order --name explorer-cancel priceCents=1500 stock=10 quantity=3`.
+
 - explorer-totals: `seed:session --name explorer-totals --product 1000:50 --cart 1`
 - explorer-totals-3: `--product 4999:50`
 - explorer-totals-4: `--product 1999:50`

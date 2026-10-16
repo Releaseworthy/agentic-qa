@@ -20,7 +20,7 @@ test.describe('GET /api/products', { tag: '@FEAT-CATALOG' }, () => {
       api.products.list({ category: 'books' }));
 
     await test.step('Then only books are listed', () => {
-      expect(items.length, 'some books are listed').toBeGreaterThan(0);
+      expect(items.length, 'the books filter returns the seeded books, not an empty list').toBeGreaterThan(0);
       expect(
         items.map((p) => p.category),
         'every product listed is a book',
@@ -85,7 +85,7 @@ test.describe('GET /api/products/:id', { tag: '@FEAT-CATALOG' }, () => {
     const fetched = await test.step('When it is fetched by id', () => api.products.get(product.id));
 
     await test.step('Then it is the product as created', () => {
-      expect(fetched, 'the product as created').toEqual(product);
+      expect(fetched, 'GET returns every field the admin created it with').toEqual(product);
     });
   });
 

@@ -10,7 +10,9 @@
  *   2. the file is imported — up to 3 hops — by a feature's code (weight 0.6, 0.4, 0.3);
  *   3. a vault document changed: a rule → its feature, a feature card → itself.
  * Framework and spec changes select the specs that import them. Global files
- * (server bootstrap, store, config, lockfile) select everything.
+ * (server bootstrap, store, admin and test-hook routes, config, lockfile) select
+ * everything, and so does product code no feature card maps — unknown impact
+ * runs the whole suite instead of none of it.
  *
  * Risk per feature = criticality (1–5) × impact weight × change-size factor ×
  * (1 + 0.5 per open defect). Output: out/impact.{json,md}, plus the Playwright
@@ -55,6 +57,9 @@ export type ImpactReport = {
 /** Changing one of these can break anything: run the whole suite. */
 const GLOBAL = [
   /^app\/(server|store|http)\.ts$/,
+  // Test infrastructure inside the app: every seed creates products and coupons as the admin, and global setup
+  // pins the seeded defects through the test hooks.
+  /^app\/routes\/(admin|test-hooks)\.ts$/,
   /^framework\/(fixtures|global-setup)\.ts$/,
   /^framework\/(config|auth|utils)\//,
   /^framework\/api\/client\.ts$/,
@@ -205,7 +210,11 @@ export function analyzeImpact(
         for (const t of tests) if (t.file.startsWith('tests/ui/')) specs.add(t.file);
         mapped = true;
       }
-      if (!mapped) unmapped.push(path);
+      // Product code no feature card reaches: nothing says what it can break, so everything runs (fail safe).
+      if (!mapped) {
+        unmapped.push(path);
+        fullReason ??= `${path} is product code no feature card maps`;
+      }
       continue;
     }
     if (!NO_TEST_IMPACT.some((re) => re.test(path))) unmapped.push(path);
@@ -299,7 +308,9 @@ function git(...args: string[]): string {
 }
 
 function changedFiles(base: string): ChangedFile[] {
-  const out = git('diff', '--numstat', `${base}...HEAD`) + git('diff', '--numstat', 'HEAD');
+  // --no-renames: a moved file counts as its old and new path, never as "old => new".
+  const out =
+    git('diff', '--numstat', '--no-renames', `${base}...HEAD`) + git('diff', '--numstat', '--no-renames', 'HEAD');
   const byPath = new Map<string, number>();
   for (const line of out.split('\n')) {
     const [added, removed, path] = line.split('\t');

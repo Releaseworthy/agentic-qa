@@ -59,6 +59,17 @@ describe('assess', () => {
     );
   });
 
+  it('a rule whose only test pins a known defect, or is skipped, is not verified', () => {
+    const withoutPay = green.filter((t) => !t.tags.includes('BR-PAY-01'));
+    for (const only of [
+      test({ tags: ['FEAT-CHECKOUT', 'BR-PAY-01'], expectedStatus: 'failed' }),
+      test({ tags: ['FEAT-CHECKOUT', 'BR-PAY-01'], status: 'skipped' }),
+    ])
+      expect(assess(closed(), [...withoutPay, only]).findings, only.status).toContainEqual(
+        expect.objectContaining({ level: 'blocker', what: expect.stringContaining('BR-PAY-01') }),
+      );
+  });
+
   it('counts a passing test.fail() as a known defect, not a failure', () => {
     const r = assess(closed(), [...green, test({ tags: ['FEAT-CHECKOUT'], expectedStatus: 'failed' })]);
     expect(r.stats.knownDefects).toBe(1);

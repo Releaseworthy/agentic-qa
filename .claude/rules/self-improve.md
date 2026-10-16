@@ -22,7 +22,8 @@ Every run ends with a **reflection**. The vault only gets what passes the gate a
    Evidence is concrete — a test title, a response body path, a screenshot, a reviewer finding, a PR comment.
    `probe` is the question a future agent would ask that this answers.
 5. **Judge:** `decision: judge` or `needs_human` → hand `proposal_id`, the preview, the evidence and the
-   neighbours to `knowledge-curator` (never judge your own proposal). `decision: reject` → fix what the
+   neighbours to `knowledge-curator` (never judge your own proposal — the tool-policy hook refuses
+   `commit_knowledge` from anyone else). `decision: reject` → fix what the
    failed check says once, or drop it.
 6. **Report** each candidate in the final response: `<id> — accepted | rejected (why) | needs human (file)`;
    headless runs also list them under `knowledge` in the structured result.

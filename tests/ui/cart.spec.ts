@@ -15,7 +15,7 @@ test.describe('Cart', { tag: '@FEAT-CART' }, () => {
       });
 
       await test.step('Then a toast confirms it and the header counts 2', async () => {
-        await expect(productPage.toast, 'confirmation toast after adding').toHaveText(
+        await expect(productPage.toast, 'the toast names the quantity and the product added').toHaveText(
           `Added 2 × ${product.name} to the cart`,
         );
         await expect(header.cartCount, 'cart badge in the header counts both units').toHaveText('2');
@@ -61,7 +61,9 @@ test.describe('Cart', { tag: '@FEAT-CART' }, () => {
     });
 
     await test.step('Then the limit is spelled out', async () => {
-      await expect(cartPage.alert, 'quantity-limit error').toHaveText('Quantity must be between 1 and 10');
+      await expect(cartPage.alert, 'BR-CART-01 refusal names the 1-10 limit').toHaveText(
+        'Quantity must be between 1 and 10',
+      );
     });
   });
 
@@ -93,7 +95,9 @@ test.describe('Cart', { tag: '@FEAT-CART' }, () => {
     });
 
     await test.step('Then the coupon, the discount and the new total show', async () => {
-      await expect(cartPage.appliedCoupon, 'applied-coupon label').toHaveText('Coupon WELCOME10 applied');
+      await expect(cartPage.appliedCoupon, 'the cart names the coupon it applied').toHaveText(
+        'Coupon WELCOME10 applied',
+      );
       await expect(cartPage.totals.discount, 'discount: 10% of $40.00').toHaveText('-$4.00');
       await expect(cartPage.totals.total, 'total: $40.00 − $4.00 + $4.99 shipping').toHaveText(money(4000 - 400 + 499));
     });
@@ -110,7 +114,7 @@ test.describe('Cart', { tag: '@FEAT-CART' }, () => {
     });
 
     await test.step('Then it is refused and nothing is discounted', async () => {
-      await expect(cartPage.alert, 'expired-coupon error').toHaveText('This coupon has expired');
+      await expect(cartPage.alert, 'BR-COUP-03 refusal for an expired coupon').toHaveText('This coupon has expired');
       await expect(cartPage.totals.discount, 'no discount after the refusal').toHaveText('-$0.00');
     });
   });

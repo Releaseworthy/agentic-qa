@@ -22,7 +22,9 @@ otherwise. Classify every failure before anything is edited, and edit only what 
    or the new value seeming reasonable. The code changing is exactly what a bug looks like. Product documents the
    behaviour first; then the test follows.
 5. **Never:** remove or weaken an assertion (exact → partial → presence), change an expected value to the observed one
-   without a document, skip / fixme / only, `test.fail` without a confirmed defect, a hard wait, a raised timeout or
-   retries. `bun run qa:heal-guard --base <ref> [--intended <DOC-ID>]` checks every test change against this table and
-   runs again in CI; a blocked change is reverted, not argued with.
+   without a document, change the test data (a price, quantity or code) so the test no longer reaches its boundary,
+   skip / fixme / only (also `test.info().skip()`), `test.fail` without a confirmed defect the test is tagged with, a
+   hard wait, a timeout (literal or constant), `configure()`, `toPass()` or retries. `bun run qa:heal-guard --base <ref>
+   [--intended <DOC-ID>]` checks every test change against this table and runs again in CI; a blocked change is
+   reverted, not argued with.
 6. **Report each failure** as `<test> — <class> — expected <value> (<DOC-ID>), observed <value> — <action taken>`.

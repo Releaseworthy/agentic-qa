@@ -165,16 +165,22 @@ export const RECIPES = {
     seeds: true,
     lands: '#/cart',
     example: 'kind=fixed value=500 minSubtotalCents=3000 priceCents=2000 quantity=2 applied=true',
-    params: z.strictObject({
-      ...product,
-      quantity,
-      kind: z.enum(['percent', 'fixed']).default('percent').describe('percent off, or a fixed amount in cents'),
-      value: z.number().int().positive().default(10).describe('percent, or cents for `fixed`'),
-      minSubtotalCents: z.number().int().nonnegative().default(0).describe('the minimum subtotal it needs'),
-      maxDiscountCents: z.number().int().positive().optional().describe('the discount cap'),
-      expired: z.boolean().default(false).describe('expired yesterday'),
-      applied: z.boolean().default(false).describe('apply it to the cart (an expired one cannot be)'),
-    }),
+    params: z
+      .strictObject({
+        ...product,
+        quantity,
+        kind: z.enum(['percent', 'fixed']).default('percent').describe('percent off, or a fixed amount in cents'),
+        value: z.number().int().positive().default(10).describe('percent, or cents for `fixed`'),
+        minSubtotalCents: z.number().int().nonnegative().default(0).describe('the minimum subtotal it needs'),
+        maxDiscountCents: z.number().int().positive().optional().describe('the discount cap'),
+        expired: z.boolean().default(false).describe('expired yesterday'),
+        applied: z.boolean().default(false).describe('apply it to the cart (an expired one cannot be)'),
+      })
+      .refine((p) => !(p.expired && p.applied), {
+        message:
+          'an expired coupon cannot be applied (BR-COUP-03) — arrange it with applied=false and apply it as a step',
+        path: ['applied'],
+      }),
     run: async (ctx, p) => {
       const user = await ctx.customer();
       const seed = ctx.seed();

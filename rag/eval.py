@@ -31,11 +31,14 @@ from rag.vector import VectorStore
 GOLDEN = Path(__file__).with_name("golden.yaml")
 # Questions accepted knowledge changes answer (written by rag.curate): once learned, a document must stay findable.
 LEARNED = Path(__file__).with_name("golden.learned.yaml")
+# Questions never used to tune the ranking: reported apart, so the headline numbers are not only in-sample.
+HOLDOUT = Path(__file__).with_name("golden.holdout.yaml")
 OUT = ROOT / "out" / "rag-eval.json"
 K = 5
 # The gate: hybrid must find an answer for (almost) every question and beat vector-only on rank.
 MIN_HYBRID_HIT_AT_K = 0.9
 MIN_HYBRID_MRR = 0.8
+MIN_HOLDOUT_HIT_AT_K = 0.85
 
 
 @dataclass
@@ -45,8 +48,8 @@ class Case:
     facts: list[str]
 
 
-def load_cases(learned: bool = True) -> list[Case]:
-    raw: list[dict[str, Any]] = yaml.safe_load(GOLDEN.read_text(encoding="utf-8"))
+def load_cases(learned: bool = True, path: Path = GOLDEN) -> list[Case]:
+    raw: list[dict[str, Any]] = yaml.safe_load(path.read_text(encoding="utf-8"))
     if learned and LEARNED.exists():
         raw += yaml.safe_load(LEARNED.read_text(encoding="utf-8")) or []
     return [Case(c["q"], c["expected"], c.get("facts", [])) for c in raw]
@@ -165,6 +168,8 @@ def main() -> None:
     cases = load_cases()
     retriever = HybridRetriever(load_vault(), VectorStore(), open_graph())
     report = run(retriever, cases)
+    holdout = run(retriever, load_cases(learned=False, path=HOLDOUT))
+    report["holdout"] = holdout
     experiment = log_to_langsmith(retriever, cases)
     if experiment:
         report["langsmith_experiment"] = experiment
@@ -174,19 +179,26 @@ def main() -> None:
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(report, indent=2), encoding="utf-8")
 
-    lines = [f"| mode | hit@1 | hit@{K} | MRR |", "| --- | --- | --- | --- |"]
-    for mode, m in report["modes"].items():
-        lines.append(f"| {mode} | {m['hit@1']} | {m[f'hit@{K}']} | {m['mrr']} |")
-    table = "\n".join(lines)
+    def markdown(r: dict[str, Any]) -> str:
+        lines = [f"| mode | hit@1 | hit@{K} | MRR |", "| --- | --- | --- | --- |"]
+        for mode, m in r["modes"].items():
+            lines.append(f"| {mode} | {m['hit@1']} | {m[f'hit@{K}']} | {m['mrr']} |")
+        return "\n".join(lines)
+
+    table = markdown(report)
+    held = markdown(holdout)
     print(f"Retrieval on {len(cases)} questions (k={K}):\n\n{table}\n")
     for q in report["misses"]["hybrid"]:
+        print(f"  hybrid miss: {q['q']} expected {q['expected']} got {q['got']}")
+    print(f"\nHeld out, never tuned on ({holdout['cases']} questions):\n\n{held}\n")
+    for q in holdout["misses"]["hybrid"]:
         print(f"  hybrid miss: {q['q']} expected {q['expected']} got {q['got']}")
     if "answers" in report:
         a = report["answers"]
         print(f"Answers ({a['model']}): faithful {a['faithfulness']} · answered {a['answered']} · facts {a['fact_coverage']}")
     if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(summary, "a", encoding="utf-8") as f:
-            f.write(f"### RAG retrieval eval\n\n{table}\n")
+            f.write(f"### RAG retrieval eval\n\n{table}\n\nHeld out ({holdout['cases']} questions):\n\n{held}\n")
 
     hybrid = report["modes"]["hybrid"]
     failures = []
@@ -196,6 +208,8 @@ def main() -> None:
         failures.append(f"hybrid MRR {hybrid['mrr']} < {MIN_HYBRID_MRR}")
     if hybrid["mrr"] < report["modes"]["vector"]["mrr"]:
         failures.append("hybrid ranks worse than vector-only")
+    if holdout["modes"]["hybrid"][f"hit@{K}"] < MIN_HOLDOUT_HIT_AT_K:
+        failures.append(f"held-out hybrid hit@{K} {holdout['modes']['hybrid'][f'hit@{K}']} < {MIN_HOLDOUT_HIT_AT_K}")
     if failures:
         print("FAILED: " + "; ".join(failures))
         sys.exit(1)

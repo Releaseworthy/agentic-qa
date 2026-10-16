@@ -56,9 +56,20 @@ describe('analyzeImpact', () => {
     expect(r.grep).toBe('');
   });
 
-  it('selects nothing for docs and tooling, and reports app files no feature maps', () => {
-    const r = run(['README.md', '.claude/skills/x/SKILL.md', 'rag/hybrid.py', 'app/domain/orphan.ts']);
+  it('selects nothing for docs and tooling', () => {
+    const r = run(['README.md', '.claude/skills/x/SKILL.md', 'rag/hybrid.py']);
     expect(r.tests.selected).toBe(0);
+    expect(r.full).toBe(false);
+  });
+
+  it('runs everything for product code no feature maps, and reports it', () => {
+    const r = run(['README.md', 'app/domain/orphan.ts']);
     expect(r.unmapped).toEqual(['app/domain/orphan.ts']);
+    expect(r.full).toBe(true);
+    expect(r.tests.selected).toBe(tests.length);
+  });
+
+  it('runs everything when the seed or test-hook routes change', () => {
+    for (const path of ['app/routes/admin.ts', 'app/routes/test-hooks.ts']) expect(run([path]).full, path).toBe(true);
   });
 });

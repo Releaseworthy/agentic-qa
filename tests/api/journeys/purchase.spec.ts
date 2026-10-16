@@ -22,7 +22,7 @@ test.describe(
 
         const me = await test.step('Register', async () => {
           const { token, user } = await api.auth.register(registration);
-          expect(user.role, 'registered as a customer').toBe('customer');
+          expect(user.role, 'self-registration makes a customer, never an admin').toBe('customer');
           return api.as({ token });
         });
 

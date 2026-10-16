@@ -37,6 +37,13 @@ def _embedder() -> DefaultEmbeddingFunction:
 _EMBEDDED: dict[str, Any] = {}
 
 
+@cache
+def _query_embedding(text: str) -> Any:
+    """Queries go through the cached model too: left to Chroma, every query built a new ONNX session (~0.15 s),
+    and the knowledge gate asks the golden set twice per proposal."""
+    return _embedder()([text])[0]
+
+
 class VectorStore:
     """The persisted index by default; `shadow()` gives a throwaway in-memory copy for what-if evaluation."""
 
@@ -89,7 +96,7 @@ class VectorStore:
         where: Any = None
         if types:
             where = {"type": types[0]} if len(types) == 1 else {"type": {"$in": types}}
-        res = self._collection.query(query_texts=[text], n_results=k, where=where)
+        res = self._collection.query(query_embeddings=[_query_embedding(text)], n_results=k, where=where)
         hits: list[VectorHit] = []
         ids = res["ids"][0]
         docs = (res.get("documents") or [[]])[0]

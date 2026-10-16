@@ -41,7 +41,9 @@ export type Traceability = {
 };
 
 export function trace(vault: Vault, tests: TestRecord[], manualResults: ManualResult[] = []): Traceability {
-  const testsFor = (id: string) => tests.filter((t) => traceTags(t).includes(id));
+  // A known-defect pin (`test.fail`) proves the bug is there, not the rule; a skipped test proves nothing.
+  const testsFor = (id: string) =>
+    tests.filter((t) => traceTags(t).includes(id) && t.expectedStatus !== 'failed' && t.status !== 'skipped');
   const row = (id: string, kind: TraceRow['kind'], title: string, weight: string): TraceRow => {
     const ts = testsFor(id);
     const failing = ts.filter((t) => t.status === 'unexpected').length;

@@ -13,5 +13,7 @@
 - **Record exactly:** labels and messages verbatim (typos included), the observed result of every step, the request/response that backs it.
 - **Locators for page objects:** `generate-locator <ref>` — prefer the role/label form it suggests.
 - **Evidence:** `screenshot --filename=out/evidence/<session>-<step>.png` for anything that will be reported.
-- **Close your session** (`-s=<session> close`) before you return — and before any stop.
+- **Close your session** (`-s=<session> close`) before you return — and before any stop. The orchestrator ends the
+  run with `bun run qa:arrange --stop` when `qa:arrange` reported `"startedApp": true` (no orphaned ShopLite).
+- Session names are lower-case letters, digits and dashes (`qa:arrange` refuses anything else).
 - Every command has a 90 s cap; a step that needs longer is split.

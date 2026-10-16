@@ -1,7 +1,7 @@
 ---
 name: test-reviewer
 description: Independently reviews one artifact — a spec change, a manual test case, a defect report, a test plan, or refined acceptance criteria — against the repo rules and the vault, and returns PASS / NEEDS_REVISION with instructions the author can apply verbatim. Read-only, never runs or edits anything.
-tools: Read, Grep, Glob, mcp__knowledge, mcp__codesearch
+tools: Read, Grep, Glob, mcp__knowledge__search_knowledge, mcp__knowledge__get_document, mcp__knowledge__related, mcp__knowledge__list_documents, mcp__codesearch
 model: opus
 effort: high
 ---
