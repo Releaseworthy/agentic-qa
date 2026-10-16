@@ -71,7 +71,83 @@ export const WORKFLOWS = {
     maxTurns: 40,
     budgetUsd: 2,
   },
-  learn: { skill: 'learn', summary: 'Review feedback into vault learnings', writes: true, maxTurns: 40, budgetUsd: 1 },
+  'write-testcases': {
+    skill: 'write-testcases',
+    summary: 'Design manual test cases with test-design techniques',
+    writes: true,
+    maxTurns: 100,
+    budgetUsd: 4,
+  },
+  'run-testcases': {
+    skill: 'run-testcases',
+    summary: 'Execute manual test cases in the app, record the run',
+    writes: true,
+    maxTurns: 200,
+    budgetUsd: 6,
+  },
+  'automate-tc': {
+    skill: 'automate-tc',
+    summary: 'Turn manual test cases into Playwright tests',
+    writes: true,
+    maxTurns: 200,
+    budgetUsd: 8,
+  },
+  'verify-bug': {
+    skill: 'verify-bug',
+    summary: 'Reproduce a bug over the API and in the UI, confirm or reject it',
+    writes: true,
+    maxTurns: 120,
+    budgetUsd: 4,
+  },
+  'bug-triage': {
+    skill: 'bug-triage',
+    summary: 'Verify, dedupe, prioritise and route open defects',
+    writes: true,
+    maxTurns: 150,
+    budgetUsd: 5,
+  },
+  'retest-bug': {
+    skill: 'retest-bug',
+    summary: 'Confirm a fix, convert its pinning test, close or reopen',
+    writes: true,
+    maxTurns: 120,
+    budgetUsd: 4,
+  },
+  'flaky-hunt': {
+    skill: 'flaky-hunt',
+    summary: 'Measure flakiness with repeated runs, fix the cause',
+    writes: true,
+    maxTurns: 150,
+    budgetUsd: 6,
+  },
+  'heal-tests': {
+    skill: 'heal-tests',
+    summary: 'Update tests to an intended product change, report real breaks',
+    writes: true,
+    maxTurns: 200,
+    budgetUsd: 8,
+  },
+  'smoke-check': {
+    skill: 'smoke-check',
+    summary: 'Post-deploy smoke of an environment, PASS/FAIL',
+    writes: false,
+    maxTurns: 60,
+    budgetUsd: 2,
+  },
+  'test-report': {
+    skill: 'test-report',
+    summary: 'Test summary report for stakeholders',
+    writes: false,
+    maxTurns: 40,
+    budgetUsd: 2,
+  },
+  learn: {
+    skill: 'learn',
+    summary: 'PR feedback and human edits into curated knowledge; --audit',
+    writes: true,
+    maxTurns: 60,
+    budgetUsd: 2,
+  },
 } as const satisfies Record<string, Workflow>;
 
 export type WorkflowName = keyof typeof WORKFLOWS;
@@ -95,8 +171,35 @@ export const RESULT_SCHEMA = {
           path: { type: 'string' },
           kind: {
             type: 'string',
-            enum: ['plan', 'ac', 'spec', 'page-object', 'helper', 'test-case', 'defect', 'learning', 'report', 'notes'],
+            enum: [
+              'plan',
+              'ac',
+              'spec',
+              'page-object',
+              'helper',
+              'test-case',
+              'test-run',
+              'defect',
+              'learning',
+              'proposal',
+              'report',
+              'notes',
+            ],
           },
+        },
+      },
+    },
+    knowledge: {
+      type: 'array',
+      description: 'Knowledge proposals of the reflection step and what became of them.',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['id', 'decision'],
+        properties: {
+          id: { type: 'string', description: 'The document id (LRN-…) or the proposal id.' },
+          decision: { type: 'string', enum: ['accepted', 'rejected', 'needs-human'] },
+          why: { type: 'string' },
         },
       },
     },
@@ -122,4 +225,5 @@ export type WorkflowResult = {
   decision?: 'GO' | 'CONDITIONAL GO' | 'NO-GO' | 'n/a';
   artifacts: { path: string; kind: string }[];
   findings: { severity: string; title: string; ref?: string }[];
+  knowledge?: { id: string; decision: 'accepted' | 'rejected' | 'needs-human'; why?: string }[];
 };

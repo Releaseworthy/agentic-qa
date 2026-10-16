@@ -5,8 +5,12 @@ test.describe(
   { tag: ['@journey', '@FEAT-CHECKOUT', '@FEAT-ORDERS', '@BR-ORD-01', '@BR-ORD-02'] },
   () => {
     test('a customer cancels, the stock comes back and another customer buys it', async ({ api, seed }) => {
-      const product = await seed.product({ stock: 2, priceCents: 2500 });
-      const [first, second] = [await seed.customer(), await seed.customer()];
+      const { product, first, second } =
+        await test.step('Given a $25.00 product with 2 in stock, and two customers', async () => ({
+          product: await seed.product({ stock: 2, priceCents: 2500 }),
+          first: await seed.customer(),
+          second: await seed.customer(),
+        }));
 
       const order = await test.step('The first customer buys both units', async () => {
         await seed.cart(first, [{ product, quantity: 2 }]);
@@ -32,9 +36,15 @@ test.describe(
     });
 
     test('once shipped, the order can no longer be cancelled', async ({ api, seed, customer }) => {
-      const order = await seed.shipped(await seed.order(customer));
-      expect((await api.as(customer).orders.get(order.id)).status, 'the customer sees it shipped').toBe('shipped');
-      await expectRefused(api.as(customer).orders.cancel(order.id), 409, 'NOT_CANCELLABLE');
+      const order = await test.step('Given an order the admin shipped', async () =>
+        seed.shipped(await seed.order(customer)));
+
+      await test.step('The customer sees it shipped', async () => {
+        expect((await api.as(customer).orders.get(order.id)).status, 'the customer sees it shipped').toBe('shipped');
+      });
+
+      await test.step('Cancelling it is refused: 409 NOT_CANCELLABLE', () =>
+        expectRefused(api.as(customer).orders.cancel(order.id), 409, 'NOT_CANCELLABLE'));
     });
   },
 );

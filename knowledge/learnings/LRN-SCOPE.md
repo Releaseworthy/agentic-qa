@@ -2,8 +2,14 @@
 id: LRN-SCOPE
 type: learning
 title: A test covers exactly what its title says
-source: PR review
+status: active
+confidence: established
+support: 1
 applies_to: [tests/**, knowledge/test-cases/**]
+sources: [PR review]
+evidence: ['review: PR review']
+created: 2026-10-15
+updated: 2026-10-15
 ---
 
 # A test covers exactly what its title says

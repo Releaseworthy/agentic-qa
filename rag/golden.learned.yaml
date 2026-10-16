@@ -1,0 +1,3 @@
+# Probe questions of accepted knowledge changes, appended by rag.curate. Each one must keep
+# retrieving its document, so a later change cannot make learned knowledge unfindable.
+[]

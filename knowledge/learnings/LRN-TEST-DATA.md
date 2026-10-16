@@ -2,8 +2,14 @@
 id: LRN-TEST-DATA
 type: learning
 title: Test data is created per test, never shared
-source: PR review
+status: active
+confidence: established
+support: 1
 applies_to: [framework/setup/seed.ts, tests/**]
+sources: [PR review]
+evidence: ['review: PR review']
+created: 2026-10-15
+updated: 2026-10-15
 ---
 
 # Test data is created per test, never shared

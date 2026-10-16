@@ -13,10 +13,10 @@ test.describe(
       'a new customer finds products, uses a coupon and sees the order in their history',
       { tag: '@smoke' },
       async ({ api, seed }) => {
-        const [book, mug] = [
+        const [book, mug] = await test.step('Given a $32.00 book and a $12.00 mug, 20 of each in stock', async () => [
           await seed.product({ category: 'books', priceCents: 3200, stock: 20 }),
           await seed.product({ category: 'home', priceCents: 1200, stock: 20 }),
-        ];
+        ]);
 
         const registration = newRegistration();
 
@@ -86,10 +86,14 @@ test.describe(
   { tag: ['@journey', '@FEAT-CART', '@FEAT-CHECKOUT', '@BR-CART-02'] },
   () => {
     test('the second buyer is stopped at checkout when the first one takes the stock', async ({ api, seed }) => {
-      const product = await seed.product({ stock: 3 });
-      const [alice, bob] = [await seed.customer(), await seed.customer()];
-      await seed.cart(alice, [{ product, quantity: 3 }]);
-      await seed.cart(bob, [{ product, quantity: 1 }]);
+      const { product, alice, bob } =
+        await test.step("Given 3 units in stock, all 3 in Alice's cart and 1 in Bob's", async () => {
+          const p = await seed.product({ stock: 3 });
+          const [a, b] = [await seed.customer(), await seed.customer()];
+          await seed.cart(a, [{ product: p, quantity: 3 }]);
+          await seed.cart(b, [{ product: p, quantity: 1 }]);
+          return { product: p, alice: a, bob: b };
+        });
 
       await test.step('Alice checks out first and takes all 3 units', () =>
         api.as(alice).orders.place({ shippingAddress: newAddress(), payment: Cards.VALID }));
@@ -99,10 +103,12 @@ test.describe(
           .as(bob)
           .raw('POST', '/api/orders', { shippingAddress: newAddress(), payment: Cards.VALID });
         expect(status, 'HTTP status for checking out a sold-out product').toBe(409);
-        expect(body, 'error code').toMatchObject({ error: { code: 'OUT_OF_STOCK' } });
+        expect(body, 'error code for the sold-out line').toMatchObject({ error: { code: 'OUT_OF_STOCK' } });
       });
 
-      expect((await api.products.get(product.id)).stock, 'stock stays at 0: nothing oversold').toBe(0);
+      await test.step('Nothing is oversold', async () => {
+        expect((await api.products.get(product.id)).stock, 'stock stays at 0: nothing oversold').toBe(0);
+      });
     });
   },
 );

@@ -17,7 +17,7 @@ from typing import Literal
 
 from rag.config import RRF_K
 from rag.graph import GraphStore
-from rag.vault import Document
+from rag.vault import Document, is_active
 from rag.vector import VectorStore
 
 Mode = Literal["hybrid", "vector", "graph"]
@@ -58,6 +58,11 @@ INTENT: list[tuple[re.Pattern[str], str]] = [
 ]
 
 
+# Documents that restate others: a manual case repeats its rule's values step by step, so it out-scores the rule
+# for "what happens when…" questions. Unless the query asks for test cases, they rank below their sources.
+DERIVED_WEIGHT: dict[str, float] = {"test-case": 0.5}
+
+
 def _words(text: str) -> set[str]:
     """Content words, cut to a 5-letter stem so cancel / cancels / cancelled / cancelling match."""
     return {w[:5] for w in WORD.findall(text.lower()) if w not in STOP and len(w) > 2}
@@ -65,7 +70,7 @@ def _words(text: str) -> set[str]:
 
 class HybridRetriever:
     def __init__(self, docs: list[Document], vector: VectorStore, graph: GraphStore) -> None:
-        self.docs = {d.id: d for d in docs}
+        self.docs = {d.id: d for d in docs if is_active(d)}
         self.vector = vector
         self.graph = graph
 
@@ -74,7 +79,7 @@ class HybridRetriever:
         ranking: list[str] = []
         best_chunk: dict[str, tuple[str, str]] = {}
         for h in hits:
-            if h.doc_id not in best_chunk:
+            if h.doc_id in self.docs and h.doc_id not in best_chunk:
                 best_chunk[h.doc_id] = (h.section, h.text)
                 ranking.append(h.doc_id)
         return ranking, best_chunk
@@ -128,6 +133,11 @@ class HybridRetriever:
             for rank, doc_id in enumerate(ranking):
                 fused[doc_id] = fused.get(doc_id, 0.0) + 1.0 / (RRF_K + rank + 1)
                 via.setdefault(doc_id, []).append(name)
+
+        for doc_id in fused:
+            kind = self.docs[doc_id].type
+            if kind in DERIVED_WEIGHT and kind not in wanted and not (types and kind in types):
+                fused[doc_id] *= DERIVED_WEIGHT[kind]
 
         results: list[Result] = []
         for doc_id in sorted(fused, key=lambda d: -fused[d])[:k]:

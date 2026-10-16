@@ -12,27 +12,29 @@ from __future__ import annotations
 
 import argparse
 import os
-import re
 from dataclasses import asdict
-from datetime import date
 from pathlib import Path
 from typing import Any
 
 from mcp.server import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 
+from rag import curate
 from rag.build import index_document, rebuild_graph
 from rag.config import KNOWLEDGE_DIR, ROOT
+from rag.curate import QA_ARTIFACTS
 from rag.graph import GraphStore, open_graph
 from rag.hybrid import SCOPES, HybridRetriever, Mode
 from rag.vault import Document, load_vault, parse
 from rag.vector import VectorStore
 
 INSTRUCTIONS = """Business knowledge of ShopLite: features (FEAT-*), business rules (BR-*), work-item
-cards (CARD-*), defects (DEF-*), manual test cases (TC-*) and review learnings (LRN-*).
+cards (CARD-*), defects (DEF-*), manual test cases (TC-*) and learnings (LRN-*).
 Search first (search_knowledge, pass a scope), then fetch whole documents by id (get_document).
 Use related() to walk from a feature to its rules, code, endpoints, specs and defects.
-Write only through upsert_document / add_learning."""
+Writes: test cases and defects with upsert_document. Every other change (learnings, feature maps,
+proposed rule edits) is a proposal: propose_knowledge runs the gate, an independent judge scores it,
+commit_knowledge applies the decision."""
 
 server = MCPServer("knowledge", instructions=INSTRUCTIONS)
 
@@ -147,34 +149,94 @@ def _write(path: Path, content: str) -> dict[str, Any]:
 
 @server.tool()
 def upsert_document(path: str, content: str) -> dict[str, Any]:
-    """Create or replace a vault document (full Markdown with frontmatter) and re-index it.
+    """Create or replace a QA artifact — a manual test case or a defect (full Markdown with frontmatter) — and re-index it.
 
-    path is repo-relative, e.g. `knowledge/test-cases/TC-CART-002-merge-lines.md`.
+    path is repo-relative, e.g. `knowledge/test-cases/TC-CART-002-merge-lines.md`. Anything else is
+    knowledge: propose it with propose_knowledge.
     """
+    doc = parse(ROOT / path, content)
+    if doc.type not in QA_ARTIFACTS:
+        raise ValueError(f"upsert_document writes test cases and defects; a {doc.type} goes through propose_knowledge")
     return _write(ROOT / path, content)
 
 
 @server.tool()
-def add_learning(title: str, lesson: str, applies_to: list[str] | None = None, source: str = "human review") -> dict[str, Any]:
-    """Record a lesson from human review (PR comments, rejected tests) as `knowledge/learnings/LRN-<slug>.md`.
+def propose_knowledge(
+    kind: str,
+    title: str,
+    body: str,
+    evidence: list[dict[str, str]],
+    source: str,
+    probe: str,
+    type: str = "learning",
+    target: str | None = None,
+    applies_to: list[str] | None = None,
+) -> dict[str, Any]:
+    """Step 1 of a knowledge change: runs the deterministic gate and returns its result. Nothing is written.
 
-    An existing learning with the same title gets the lesson appended instead of a duplicate file.
-    Keep `lesson` to durable, reusable guidance — not a log of what happened.
+    kind: add | update | deprecate. type: learning (default) | feature | rule | card | overview.
+    body: learning → the lesson (what to do, why, where); other types → the whole document with frontmatter;
+          deprecate → the reason. target: the existing id for update / deprecate.
+    evidence: [{kind, ref, quote?}] — kind is test-run | api-response | screenshot | review | pr-comment | human |
+          code | transcript; ref is a path, test title, PR/comment id or URL.
+    source: where it comes from ("regression run", "PR #12 review"). probe: a question this knowledge answers.
+
+    Gate: shape, evidence, links, scope (applies_to matches files), ownership, novelty (no near-duplicate),
+    retrieval (the golden set does not regress on a throwaway index and the probe finds the document).
+    decision: judge → hand proposal_id, the preview and the neighbours to an independent judge (knowledge-curator),
+    then commit_knowledge. needs_human → Product owns it; commit_knowledge files it for a human.
+    reject → fix and propose again, or drop it.
     """
-    slug = re.sub(r"[^A-Z0-9]+", "-", title.upper()).strip("-")[:40]
-    doc_id = f"LRN-{slug}"
-    path = KNOWLEDGE_DIR / "learnings" / f"{doc_id}.md"
-    existing = _doc(doc_id)
-    if existing:
-        text = (ROOT / existing.path).read_text(encoding="utf-8").rstrip()
-        content = f"{text}\n\n## {date.today().isoformat()} ({source})\n\n{lesson.strip()}\n"
-    else:
-        applies = ", ".join(applies_to or [])
-        content = (
-            f"---\nid: {doc_id}\ntype: learning\ntitle: {title.strip()}\nsource: {source}\n"
-            f"applies_to: [{applies}]\n---\n\n# {title.strip()}\n\n{lesson.strip()}\n"
-        )
-    return _write(path, content)
+    raw = {
+        "kind": kind,
+        "type": type,
+        "title": title,
+        "body": body,
+        "evidence": evidence,
+        "source": source,
+        "probe": probe,
+        "target": target,
+        "applies_to": applies_to or [],
+    }
+    ev, _, _ = curate.evaluate(raw, state().docs)
+    curate.save_pending(ev, raw)
+    neighbours = [{**n, "title": d.title, "body": d.body[:800]} for n in ev.neighbours if (d := _doc(n["id"]))]
+    return {
+        "proposal_id": ev.proposal_id,
+        "decision": ev.decision,
+        "doc_id": ev.doc_id,
+        "path": ev.path,
+        "checks": [asdict(c) for c in ev.checks],
+        "neighbours": neighbours,
+        "retrieval": {k: v for k, v in ev.retrieval.items() if k != "per"},
+        "preview": ev.preview,
+    }
+
+
+@server.tool()
+def commit_knowledge(proposal_id: str, verdict: str, scores: dict[str, int], rationale: str, judge: str = "knowledge-curator") -> dict[str, Any]:
+    """Step 2: applies the judge's verdict to an evaluated proposal and records it in the ledger.
+
+    verdict: accept | reject | needs_human. scores: grounded, reusable, actionable, scoped, consistent (1–5).
+    Accepted only when the gate passed, every score ≥ 3 and the mean ≥ 4 — otherwise recorded as rejected.
+    Product-owned changes are filed under knowledge/_curation/proposals/ for a human instead of written.
+    """
+    if verdict not in ("accept", "reject", "needs_human"):
+        raise ValueError("verdict is accept, reject or needs_human")
+    out = curate.decide(proposal_id, verdict, scores, rationale, judge)  # type: ignore[arg-type]
+    result: dict[str, Any] = {"decision": out.decision, "doc_id": out.doc_id, "reason": out.reason}
+    if out.write:
+        result["write"] = _write(ROOT / out.write[0], out.write[1])
+    if out.proposal_file:
+        result["proposal_file"] = out.proposal_file
+    return result
+
+
+@server.tool()
+def audit_knowledge() -> dict[str, Any]:
+    """Curation backlog: learnings whose applies_to matches no file, provisional ones no second source confirmed
+    within 60 days, near-duplicate learnings, broken [[links]], proposals waiting for a human."""
+    return curate.audit(state().docs)
 
 
 def main() -> None:

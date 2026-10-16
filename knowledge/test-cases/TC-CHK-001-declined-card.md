@@ -5,6 +5,7 @@ title: A declined card keeps the customer on checkout
 feature: FEAT-CHECKOUT
 covers: [BR-PAY-01]
 priority: critical
+status: ready
 automated_by: tests/ui/checkout.spec.ts › Checkout › a declined card keeps the customer on checkout with the reason
 ---
 

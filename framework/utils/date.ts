@@ -4,10 +4,22 @@
  * framework writes or reads uses one of the patterns below.
  */
 
-import { add, differenceInMilliseconds, type Duration, format, isAfter, milliseconds, parseISO, sub } from 'date-fns';
+import {
+  add,
+  differenceInCalendarDays,
+  differenceInMilliseconds,
+  type Duration,
+  format,
+  isAfter,
+  milliseconds,
+  parseISO,
+  sub,
+} from 'date-fns';
 
 /** date-fns `format` patterns (https://date-fns.org/docs/format). */
 export const DateFormat = {
+  /** A calendar day, as vault frontmatter records it (`reported:`, `verified:`): 2026-10-15. */
+  DAY: 'yyyy-MM-dd',
   /** Card expiry as the checkout form and the payment API take it: 07/29. */
   CARD_EXPIRY: 'MM/yy',
   /** Log lines: local time and its UTC offset, 2026-10-15 14:05:09 +07:00. */
@@ -42,6 +54,11 @@ export function toIso(date: Date): string {
 /** True while `date` is more than `margin` away in the future. */
 export function isFresh(date: Date, margin: Duration = {}): boolean {
   return isAfter(sub(date, margin), now());
+}
+
+/** Whole calendar days from an ISO day (`2026-10-01`) to `until`: how long a defect has been open. */
+export function daysSince(isoDay: string, until: Date = now()): number {
+  return differenceInCalendarDays(until, parseISO(isoDay));
 }
 
 /** A duration in ms: `toMs({ seconds: 20 })`. */

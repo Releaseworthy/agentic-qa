@@ -8,12 +8,13 @@ Applies to every session, skill and subagent in this repo. Say each thing once.
   - `app/` — ShopLite, the system under test. Never edit it to make a test pass. A product bug is reported, not hidden.
   - `framework/` — API helpers (`api/`), accounts and storage states (`auth/`), env and timeouts (`config/`), test data (`setup/seed.ts`), page objects (`pages/`), dates / steps / crypto (`utils/`), fixtures. Reuse before adding.
   - `tests/api/endpoints`, `tests/api/journeys`, `tests/ui` — specs. `tests/unit` — QA-engine unit tests.
-  - `knowledge/` — the vault. Write only through the `knowledge` MCP (`upsert_document`, `add_learning`) so the index stays in sync.
-  - `qa/` — deterministic engines: impact, traceability, release gate, defect detection. Agents call them; they don't reimplement them.
+  - `knowledge/` — the vault. Test cases and defects through `upsert_document`; every other change is a proposal (`propose_knowledge` → `knowledge-curator` → `commit_knowledge`). Never hand-edit it.
+  - `qa/` — deterministic engines: impact, traceability, release gate, seeded-defect detection, defect triage, manual runs, flakiness. Agents call them; they don't reimplement them.
 - **Ground before acting.** Behaviour comes from the `knowledge` MCP (`search_knowledge` with a `scope`, then `get_document`), never from guessing. Existing code comes from the `codesearch` MCP (`list_helpers`, `search_code`, `find_symbol`) before anything new is written.
-- **Tests** follow `.claude/rules/test-authoring.md`. Browsers follow `.claude/rules/browser.md`. Skills that delegate follow `.claude/rules/orchestration.md`.
+- **Tests** follow `.claude/rules/test-authoring.md`. Browsers follow `.claude/rules/browser.md`. Skills that delegate follow `.claude/rules/orchestration.md`. Bugs follow `.claude/rules/bug-lifecycle.md`.
 - **Run tests** with `bunx playwright test --project=<api|chromium> --grep "<regex>"` — one command for every target, `--workers=4`. `TEST_ENV=dev|staging|live` (default `dev`) picks `env/.env.<name>`; the app starts with the run. `STRING_HEX_SHOPLITE` must be set (it decrypts the saved accounts). Unit tests: `bun test tests/unit`.
 - **Credentials** never appear in plaintext — env files hold `enc1.…` tokens from `bun run crypto encrypt`.
 - **Never fix a failure by raising a timeout, weakening an assertion, or skipping.** Find the missing wait or the real cause.
+- **Every run ends with a reflection** (`.claude/rules/self-improve.md`): reusable lessons are proposed, gated and judged — the vault only grows with evidence.
 - **Known product bugs stay visible:** a `knowledge/defects/DEF-*.md` document plus a `test.fail()` test titled with the defect id.
 - **Scratch** (plans, reports, screenshots, transcripts) goes in `out/` — gitignored. Never anywhere else.

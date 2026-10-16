@@ -2,8 +2,14 @@
 id: LRN-UI-WAITS
 type: learning
 title: Wait for the request behind a UI action, never for time
-source: PR review
+status: active
+confidence: established
+support: 1
 applies_to: [framework/pages/**]
+sources: [PR review]
+evidence: ['review: PR review']
+created: 2026-10-15
+updated: 2026-10-15
 ---
 
 # Wait for the request behind a UI action, never for time

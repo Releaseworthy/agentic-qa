@@ -22,5 +22,6 @@ Read `.claude/rules/orchestration.md` first.
    - Environments and data (seed helpers).
    - Entry and exit criteria — measurable: e.g. 0 failing tests on criticality ≥ 4 features, every changed rule has ≥ 1 automated test, no open critical/high defect, pass rate ≥ 95 %.
 5. **Review:** `test-reviewer` on the plan; apply its revisions (≤ 2 rounds).
+6. **Reflect: `.claude/rules/self-improve.md`.**
 
 Final response: the plan path, the risk table, the regression command (`bunx playwright test --grep "…"`), new tests to write, exit criteria.
