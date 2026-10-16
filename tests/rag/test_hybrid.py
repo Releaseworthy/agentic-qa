@@ -29,3 +29,12 @@ def test_asking_for_test_cases_still_finds_them_first(retriever: HybridRetriever
     q = "Which manual test case covers free shipping at exactly $50?"
     assert rank(retriever, q, "TC-CHK-002") < rank(retriever, q, "BR-SHIP-01")
     assert rank(retriever, "free shipping at exactly $50", "TC-CHK-002", scope="test-cases") == 0
+
+
+def test_a_precondition_question_finds_the_setup_catalog(retriever: HybridRetriever) -> None:
+    assert rank(retriever, "How do I set up a cart with an expired coupon as a precondition?", "SETUP-RECIPES") == 0
+
+
+def test_a_behaviour_question_ranks_the_rule_above_the_setup_catalog_naming_it(retriever: HybridRetriever) -> None:
+    q = "Can a coupon that expired yesterday still be applied?"
+    assert rank(retriever, q, "BR-COUP-03") < rank(retriever, q, "SETUP-RECIPES")

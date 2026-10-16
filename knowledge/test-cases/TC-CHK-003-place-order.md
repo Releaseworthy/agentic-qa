@@ -7,18 +7,18 @@ covers: [BR-PAY-01]
 priority: critical
 status: ready
 automated_by: tests/ui/checkout.spec.ts › Checkout › placing an order shows the confirmation and empties the cart
+setup: { recipe: cart, priceCents: 2600, stock: 10, quantity: 2 }
 ---
 
 # TC-CHK-003 — Placing an order shows the confirmation and empties the cart
 
 ## Preconditions
 
-- A signed-in customer with a $26.00 product (stock 10) × 2 in the cart:
-  `bun run seed:session --name <session> --product 2600:10 --cart 2`.
+- A signed-in customer with a $26.00 product (stock 10) × 2 in the cart: `bun run qa:arrange --case TC-CHK-003 --name <session>`.
 
 ## Test data
 
-Card `4242424242424242`, an expiry in the future (e.g. `12/34`), CVC `123`; Country `US`.
+Card `testData.cards.VALID` (`4242424242424242`; expiry and CVC from the arrange output), address `testData.address`.
 
 ## Steps
 

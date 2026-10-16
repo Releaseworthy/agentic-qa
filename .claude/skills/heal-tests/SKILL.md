@@ -1,29 +1,41 @@
 ---
 name: heal-tests
-description: Test maintenance after an intended product change — sorts failing tests into "the app changed on purpose" (a label, a flow, a response field) vs "the app broke", re-discovers the new UI with playwright-cli, updates page objects, helpers, specs and manual cases to the new intended behaviour, and reports real regressions as bugs. Never weakens an assertion to go green. Invoke as /heal-tests [--results <path> | <grep>] [--card CARD-…].
-argument-hint: "[--results <path> | <grep>] [--card CARD-…]"
+description: Test maintenance with a verdict first — classifies every failing test (product bug, intended change, test defect, environment, flaky, unknown) against the vault and a framework-arranged repro, reports bugs instead of healing them, updates tests only to behaviour a rule/feature/card already documents (or a stale locator/wait), and proves it with the heal guard. Never edits a test to make it pass. Invoke as /heal-tests [--results <path> | <grep>] [--card CARD-…] [--base <ref>].
+argument-hint: "[--results <path> | <grep>] [--card CARD-…] [--base <ref>]"
 ---
 
-# Self-healing test maintenance
+# Test maintenance — verdict first
 
-Read `.claude/rules/orchestration.md` and `.claude/rules/browser.md` first.
+Read `.claude/rules/orchestration.md`, `.claude/rules/failure-triage.md`, `.claude/rules/test-data.md` and
+`.claude/rules/browser.md` first. A green run is not the goal; a correct verdict per failure is.
 
 1. **Failures:** from `--results` (default `out/results.json`), or run the grep. Group them by the page object,
-   helper or schema they fail in — one change usually breaks many tests the same way.
-2. **Intended or broken?** For each group, `knowledge-scout`: does a card, feature or rule say the behaviour changed
-   (`--card`, `cards` scope, recently changed docs)? `git log -p` on `app/` for the change itself.
-   - The vault and the change agree → **intended**: heal.
-   - The behaviour contradicts a rule → **broken**: `PRODUCT_BUG` → `/verify-bug` flow; tests stay as they are.
-   - A rule should change but the vault doesn't say so → `needs_human`: propose the rule edit (`propose_knowledge`,
-     type `rule`) and stop that group.
-3. **Re-discover** (intended UI changes): one `ui-explorer` per page — new labels, roles, the request each action
-   waits for, `generate-locator`.
-4. **Heal at the lowest layer:** `test-author` updates the page object / API helper / zod schema first, then specs
-   only where the change is visible in the title or the expected values come from the new rule. Assertions keep
-   their strength; only their values follow the new documented behaviour.
-5. **Manual cases** that describe the old screens → `qa-writer` updates them (`CASE_OUTDATED`).
-6. **Validate:** the failing tests now pass, the rest of the area still does (`--grep "@<feature>"`), typecheck, lint;
-   `test-reviewer` reviews every healed file.
-7. **Reflect:** `.claude/rules/self-improve.md`.
+   helper or schema they fail in, and by the error kind: a locator/timeout error vs a value mismatch
+   (`Expected … Received …`) vs a refusal code.
+2. **Expected, per group** (parallel): `knowledge-scout` — the rule / feature / card each test tags, verbatim values,
+   and whether that document changed since the test did (`git log -1 --format=%cs -- <doc>` vs `<spec>` on the base
+   ref). `--card` → that card too.
+3. **Observed, per group:** reproduce the failing check outside the test — `bun run qa:arrange <recipe> …` (or
+   `arrange()` in `out/heal/<group>/repro.ts`) for the start state, then the single API call, or one `ui-explorer`
+   step for UI-only groups. Record the actual value verbatim.
+4. **Classify** each group with the table in `.claude/rules/failure-triage.md`, citing the document id and both values.
+   - `PRODUCT_BUG` → `/verify-bug` flow (`.claude/rules/bug-lifecycle.md`); the tests stay as they are.
+   - `UNKNOWN` (nothing documents the new behaviour) → `propose_knowledge` (type `rule`/`feature`, goes to a human)
+     with the observed behaviour as evidence, and stop that group: `status: needs_human`.
+   - `ENVIRONMENT` / `FLAKY` → report, or `/flaky-hunt`; no test edit.
+   - `TEST_DEFECT` and `INTENDED_CHANGE` → heal (5).
+5. **Heal** (only those two classes):
+   - Locators: one `ui-explorer` per changed page — new labels, roles, the request each action waits for,
+     `generate-locator`.
+   - `test-author` fixes the lowest layer first (page object, API helper, zod schema, recipe), then specs. An
+     expected value changes only to the value the cited document states; assertions keep their strength.
+   - Manual cases that describe the old screens → `qa-writer` updates them (`CASE_OUTDATED`).
+6. **Guard:** `bun run qa:heal-guard --base <ref> --intended <DOC-ID> …` (one `--intended` per `INTENDED_CHANGE`
+   document; default base `origin/main`). Every ✗ is reverted — never argued with or worked around. Headless runs
+   list the documents under `intended` in the structured result; CI runs the guard again before the PR opens.
+7. **Validate:** the healed tests pass, the rest of the area still does (`--grep "@<feature>"`), typecheck, lint;
+   `test-reviewer` reviews every healed file against the classification.
+8. **Reflect:** `.claude/rules/self-improve.md`.
 
-Final response: groups (cause, intended/broken), files healed, tests back to green, manual cases updated, bugs reported, knowledge proposals.
+Final response: per group — tests, class, expected (DOC-ID, value) vs observed (value, repro), action; files healed;
+the heal-guard result; tests back to green; bugs reported; questions for Product; knowledge proposals.

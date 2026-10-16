@@ -83,6 +83,13 @@ class TestChecks:
         check, human = curate.check_ownership(curate.Proposal.from_dict(tc), parse(Path("x.md"), tc["body"]), by_id)
         assert not check.ok and not human
 
+    def test_the_generated_setup_catalog_is_refused(self, docs: list[Document]) -> None:
+        by_id = {d.id: d for d in docs}
+        text = (curate.ROOT / by_id["SETUP-RECIPES"].path).read_text(encoding="utf-8")
+        raw = proposal(kind="update", type="setup", target="SETUP-RECIPES", title="Recipes", body=text + "\nmore")
+        check, human = curate.check_ownership(curate.Proposal.from_dict(raw), doc_of(raw, docs), by_id)
+        assert not check.ok and not human and "recipes.ts" in check.detail
+
     def test_a_feature_map_change_is_agent_owned_but_behaviour_is_not(self, docs: list[Document]) -> None:
         by_id = {d.id: d for d in docs}
         text = (curate.ROOT / by_id["FEAT-CATALOG"].path).read_text(encoding="utf-8")

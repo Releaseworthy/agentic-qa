@@ -21,7 +21,7 @@ from rag.vault import Document, is_active
 from rag.vector import VectorStore
 
 Mode = Literal["hybrid", "vector", "graph"]
-ID = re.compile(r"\b((?:FEAT|BR|DEF|CARD|TC|LRN)-[A-Z0-9-]+)\b", re.IGNORECASE)
+ID = re.compile(r"\b((?:FEAT|BR|DEF|CARD|TC|LRN|SETUP)-[A-Z0-9-]+)\b", re.IGNORECASE)
 WORD = re.compile(r"[a-z0-9]+")
 STOP = set("a an the of to in on for and or is are be by with what which how when does do can i my".split())
 SCOPES: dict[str, list[str]] = {
@@ -32,6 +32,7 @@ SCOPES: dict[str, list[str]] = {
     "learnings": ["learning"],
     "defects": ["defect"],
     "cards": ["card"],
+    "setup": ["setup"],
 }
 
 
@@ -55,12 +56,14 @@ INTENT: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\b(card|story|unclear|refine|acceptance criteria)\b", re.I), "card"),
     (re.compile(r"\b(should (tests?|we)|best practice|lesson|review feedback)\b", re.I), "learning"),
     (re.compile(r"\b(endpoints?|pages?|code|which rules)\b", re.I), "feature"),
+    (re.compile(r"\b(preconditions?|start state|set ?up|test data|arrange|recipes?|seed(ed|ing)?|manual run|how do i (get|create|make))\b", re.I), "setup"),
 ]
 
 
-# Documents that restate others: a manual case repeats its rule's values step by step, so it out-scores the rule
-# for "what happens when…" questions. Unless the query asks for test cases, they rank below their sources.
-DERIVED_WEIGHT: dict[str, float] = {"test-case": 0.5}
+# Documents that restate others: a manual case repeats its rule's values step by step, and the setup catalog names the
+# rules each recipe serves, so both out-score the rule for "what happens when…" questions. Unless the query asks for
+# them, they rank below their sources.
+DERIVED_WEIGHT: dict[str, float] = {"test-case": 0.5, "setup": 0.5}
 
 
 def _words(text: str) -> set[str]:

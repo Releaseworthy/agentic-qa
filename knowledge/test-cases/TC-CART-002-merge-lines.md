@@ -7,14 +7,14 @@ covers: []
 priority: medium
 status: ready
 automated_by: none
+setup: { recipe: product, priceCents: 1000, stock: 50 }
 ---
 
 # TC-CART-002 — Adding a product already in the cart adds to its line
 
 ## Preconditions
 
-- A signed-in customer and a product at $10.00 with stock 50, cart empty:
-  `bun run seed:session --name <session> --product 1000:50`.
+- A signed-in customer and a $10.00 product (stock 50), cart empty: `bun run qa:arrange --case TC-CART-002 --name <session>`.
 
 ## Steps
 

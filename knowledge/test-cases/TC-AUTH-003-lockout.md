@@ -7,18 +7,18 @@ covers: [BR-AUTH-02]
 priority: high
 status: ready
 automated_by: none
+setup: { recipe: customer, signedIn: false }
 ---
 
 # TC-AUTH-003 — Five failed sign-ins lock the account
 
 ## Preconditions
 
-- A registered customer, created over the API: `bun run seed:session --name <session>` prints its email and password.
-- Signed out in the browser (do not `state-load` the session).
+- A registered customer, signed out in the browser: `bun run qa:arrange --case TC-AUTH-003 --name <session>` — its `user.email` and `user.password` are in the output.
 
 ## Test data
 
-Wrong password `wrong-pass1`; the right password from the seed output.
+Wrong password `wrong-pass1`; the right password is `user.password` from the arrange output.
 
 ## Steps
 

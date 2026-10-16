@@ -27,6 +27,8 @@
     "qa:triage": "bun run qa/defects.ts",
     "qa:manual": "bun run qa/manual-runs.ts",
     "qa:flaky": "bun run qa/flaky.ts",
+    "qa:arrange": "bun run framework/setup/arrange-cli.ts",
+    "qa:heal-guard": "bun run qa/heal-guard.ts",
     "codesearch": "bun run codesearch/cli.ts",
     "mcp:code": "bun run codesearch/mcp.ts",
     "rag:build": "uv run python -m rag.build",
@@ -42,7 +44,6 @@
     "lint:fix": "bun --bun eslint . --fix",
     "format": "bun --bun prettier . --write",
     "format:check": "bun --bun prettier . --check",
-    "seed:session": "bun run framework/setup/session-cli.ts",
     "crypto": "bun run scripts/crypto.ts"
   },
   "devDependencies": {

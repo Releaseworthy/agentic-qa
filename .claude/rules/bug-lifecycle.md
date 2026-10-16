@@ -6,7 +6,9 @@
   `## History`, written by `qa-writer` and reviewed by `test-reviewer`.
 - **Expected comes from the vault.** A behaviour is a bug only when it contradicts a rule or feature document
   (cite the id). No document says → it is a question for Product, not a defect (`NEEDS_INFO`).
-- **Reproduce at both layers.** API first (`out/bugs/<DEF-id>/repro.ts`, run with `bun run`, prints request and
+- **Reproduce at both layers, from a recipe.** The start state is a framework recipe (`.claude/rules/test-data.md`),
+  written into the defect's Steps as `bun run qa:arrange <recipe> …` so every retest arranges the same state. API
+  first (`out/bugs/<DEF-id>/repro.ts`: `arrange()` then the call under test, run with `bun run`, prints request and
   response) — it shows whether the backend is wrong. Then the UI with `playwright-cli` (`ui-explorer`) — it shows
   what the customer sees. `layer`: `api` (API wrong), `ui` (API right, screen wrong), `both`.
 - **Evidence** lives in `out/bugs/<DEF-id>/`: the repro script and its output, screenshots, response bodies.

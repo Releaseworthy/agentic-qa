@@ -133,6 +133,12 @@ jobs:
         env:
           PR: ${{ github.event.pull_request.number }}
 
+      # An agent never ships a test change that hides a failure: removed or weakened assertions, skips and raised
+      # timeouts are refused; a new expected value needs the rule/feature/card that states it (qa/heal-guard.ts).
+      - name: Heal guard
+        if: ${{ success() && steps.auth.outputs.ok == 'true' && (github.event_name == 'workflow_dispatch' || github.event.action == 'closed') }}
+        run: bun run qa:heal-guard --base HEAD --result "$(ls -d out/agent-runs/*/ | tail -1)result.json"
+
       - name: Open a PR with what the agent wrote
         if: ${{ success() && steps.auth.outputs.ok == 'true' && (github.event_name == 'workflow_dispatch' || github.event.action == 'closed') }}
         run: |

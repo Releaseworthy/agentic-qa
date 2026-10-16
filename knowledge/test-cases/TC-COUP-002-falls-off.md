@@ -7,14 +7,14 @@ covers: [BR-COUP-02]
 priority: medium
 status: ready
 automated_by: none
+setup: { recipe: cart, priceCents: 1200, stock: 10, quantity: 2, coupon: WELCOME10 }
 ---
 
 # TC-COUP-002 — A coupon falls off when the cart drops below its minimum
 
 ## Preconditions
 
-- A signed-in customer with a $12.00 product × 2 in the cart and `WELCOME10` applied:
-  `bun run seed:session --name <session> --product 1200:10 --cart 2 --coupon WELCOME10`.
+- A signed-in customer with a $12.00 product × 2 in the cart and `WELCOME10` applied: `bun run qa:arrange --case TC-COUP-002 --name <session>`.
 
 ## Steps
 

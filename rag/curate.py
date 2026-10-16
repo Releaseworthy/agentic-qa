@@ -59,6 +59,8 @@ UNCONFIRMED_DAYS = 60
 EVIDENCE_KINDS = {"test-run", "api-response", "screenshot", "review", "pr-comment", "human", "code", "transcript"}
 HUMAN_EVIDENCE = {"review", "pr-comment", "human"}
 QA_ARTIFACTS = {"test-case", "defect"}
+# Generated from code: the setup catalog is rendered from framework/setup/recipes.ts (bun run qa:arrange --catalog).
+GENERATED = {"setup"}
 PRODUCT_OWNED = {"rule", "card", "overview"}
 FEATURE_MAP_KEYS = {"code", "endpoints", "pages"}
 FOLDERS = {"learning": "learnings", "feature": "features", "rule": "rules", "card": "cards", "overview": "product"}
@@ -268,6 +270,8 @@ def check_ownership(p: Proposal, new_doc: Document, by_id: dict[str, Document]) 
     """(check, needs a human). QA artifacts are refused here; Product-owned knowledge goes to a human."""
     if p.type in QA_ARTIFACTS:
         return Check("ownership", False, f"{p.type}s are written with upsert_document and reviewed by test-reviewer"), False
+    if p.type in GENERATED or (p.target or "").startswith("SETUP-"):
+        return Check("ownership", False, "generated from framework/setup/recipes.ts — add or change a recipe (RECIPE_MISSING), then bun run qa:arrange --catalog"), False
     if p.type == "learning":
         return Check("ownership", True, "agent-owned"), False
     if p.type == "feature" and p.kind == "update" and (target := by_id.get(p.target or "")):

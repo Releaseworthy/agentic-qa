@@ -40,6 +40,29 @@ jobs:
       - run: bun run typecheck
       - run: bun run format:check
       - run: bun run test:unit
+      - name: Recipe catalog current, every manual case arranges via a recipe
+        run: bun run qa:arrange --check
+
+  heal-guard:
+    name: heal guard
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      # Blocking for agent branches (evidence from the PR body's Intended-change: <id> lines); a report for humans.
+      - name: Test changes follow documented behaviour
+        run: |
+          args=()
+          while read -r id; do [ -n "$id" ] && args+=(--intended "$id"); done < <(printf '%s\n' "$BODY" | sed -nE 's/^Intended-change: ([A-Z]+-[A-Z0-9-]+).*/\1/p')
+          bun run qa:heal-guard --base "origin/$BASE" "${args[@]}" || [[ "$HEAD" != agentic/* ]]
+        env:
+          BASE: ${{ github.base_ref }}
+          HEAD: ${{ github.head_ref }}
+          BODY: ${{ github.event.pull_request.body }}
 
   rag:
     name: hybrid RAG · ${{ matrix.graph }}

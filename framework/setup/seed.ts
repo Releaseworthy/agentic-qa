@@ -1,5 +1,5 @@
 import type { APIRequestContext } from '@playwright/test';
-import { Api, type Cart, type Coupon, type Order, type Product } from '@api';
+import { Api, ApiError, type Cart, type Coupon, type Order, type Product } from '@api';
 import type { NewCoupon, NewProduct } from '@api/admin-api';
 import { Account } from '@auth/accounts';
 import { newCustomer, session, type Customer } from '@auth/session';
@@ -84,5 +84,27 @@ export class Seed {
   @step((order: Order) => `Seed: ship order ${order.id}`)
   async shipped(order: Order): Promise<Order> {
     return (await this.admin()).admin.shipOrder(order.id);
+  }
+
+  @step((customer: Customer, order: Order) => `Seed: ${customer.name} cancels order ${order.id}`)
+  cancelled(customer: Customer, order: Order): Promise<Order> {
+    return this.api.as(customer).orders.cancel(order.id);
+  }
+
+  /** BR-AUTH-02: five wrong passwords in a row — checked by the right one then being refused as ACCOUNT_LOCKED. */
+  @step((customer: Customer) => `Seed: lock ${customer.name}'s account with 5 failed sign-ins`)
+  async lockedOut(customer: Customer): Promise<Customer> {
+    const attempt = (password: string) =>
+      this.api.auth.login({ email: customer.email, password }).then(
+        () => undefined,
+        (error: unknown) => (error instanceof ApiError ? error.code : String(error)),
+      );
+    for (let n = 1; n <= 5; n++) {
+      const refused = await attempt(`${customer.password}-wrong`);
+      if (refused !== 'INVALID_CREDENTIALS') throw new Error(`failed sign-in ${n} was not refused: ${refused}`);
+    }
+    const locked = await attempt(customer.password);
+    if (locked !== 'ACCOUNT_LOCKED') throw new Error(`5 failed sign-ins did not lock the account: ${locked}`);
+    return customer;
   }
 }

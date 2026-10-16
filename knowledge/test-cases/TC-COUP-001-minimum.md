@@ -7,14 +7,14 @@ covers: [BR-COUP-02]
 priority: medium
 status: ready
 automated_by: none
+setup: { recipe: cart, priceCents: 1999, stock: 10, quantity: 1 }
 ---
 
 # TC-COUP-001 — A coupon below its minimum subtotal is refused with the minimum
 
 ## Preconditions
 
-- A signed-in customer with one product at $19.99 (stock 10) in the cart, quantity 1:
-  `bun run seed:session --name <session> --product 1999:10 --cart 1`.
+- A signed-in customer with one product at $19.99 (stock 10) in the cart, quantity 1: `bun run qa:arrange --case TC-COUP-001 --name <session>`.
 
 ## Steps
 

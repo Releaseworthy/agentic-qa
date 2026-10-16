@@ -69,3 +69,15 @@
 - q: Which endpoints does checkout use?
   expected: [FEAT-CHECKOUT]
   facts: ['POST /api/orders']
+- q: How do I get a signed-in customer with exactly fifty dollars in the cart for a manual run?
+  expected: [SETUP-RECIPES]
+  facts: ['qa:arrange', 'cart', 'priceCents']
+- q: How do I set up an expired coupon as a precondition?
+  expected: [SETUP-RECIPES]
+  facts: ['coupon', 'expired']
+- q: Is there a ready-made start state with a locked-out account to test from?
+  expected: [SETUP-RECIPES]
+  facts: ['locked-out']
+- q: Where does the test data for a manual run come from - card numbers, addresses, emails?
+  expected: [SETUP-RECIPES, BR-PAY-01]
+  facts: ['testData']

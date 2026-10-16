@@ -6,16 +6,16 @@ argument-hint: "<DEF-…> [--base <ref>]"
 
 # Retest after a fix
 
-Read `.claude/rules/orchestration.md`, `.claude/rules/browser.md` and `.claude/rules/bug-lifecycle.md` first.
+Read `.claude/rules/orchestration.md`, `.claude/rules/browser.md`, `.claude/rules/test-data.md`, `.claude/rules/bug-lifecycle.md` and `.claude/rules/failure-triage.md` first.
 
 1. **The defect:** `get_document <DEF-id>` — steps, expected (rule), layer, the pinning test, evidence under
    `out/bugs/<id>/`. Status should be `fixed`; `confirmed` → retest anyway and say the fix was not announced.
 2. **Pinning test:** `bunx playwright test --grep "<DEF-id>" --workers=1`. Fixed → it fails with "expected to fail,
    but passed". Still failing as expected → the bug is still there (go to 6).
-3. **Repro:** re-run `out/bugs/<id>/repro.ts` (write it from the defect's steps if missing) 3 times; one
-   `ui-explorer` walks the UI steps for `ui`/`both`. All must show the expected behaviour from the rule.
+3. **Repro:** re-run `out/bugs/<id>/repro.ts` (write it from the defect's steps if missing) 3 times; it arranges its start state with the recipe in the defect's Steps (`arrange()`), never by hand. One
+   `ui-explorer` walks the UI steps for `ui`/`both` from the same recipe (`bun run qa:arrange …`). All must show the expected behaviour from the rule.
 4. **Regression around the fix:** `bun run qa:impact --quiet --base <ref>` (default `origin/main`) when the fix is in
-   the diff, else `--grep "@<feature>"`; run it with `--retries=1`. A new failure → triage it like `/regression`.
+   the diff, else `--grep "@<feature>"`; run it with `--retries=1`. A new failure → classify it (`.claude/rules/failure-triage.md`) — the fix may have broken something.
 5. **Fixed:** `test-author` turns the pinning test into a normal test: remove `test.fail`, keep the title and
    `@DEF-…` tag, assert the rule's expected values; run it; `test-reviewer` reviews. `qa-writer` sets
    `status: closed`, `verified: <date>`, a History line with the evidence.

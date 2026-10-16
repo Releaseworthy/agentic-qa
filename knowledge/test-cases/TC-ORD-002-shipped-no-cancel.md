@@ -7,13 +7,14 @@ covers: [BR-ORD-01]
 priority: high
 status: ready
 automated_by: tests/ui/orders.spec.ts › Order history › new customer › a shipped order offers no cancel button
+setup: { recipe: order, status: shipped }
 ---
 
 # TC-ORD-002 — A shipped order cannot be cancelled
 
 ## Preconditions
 
-- A signed-in customer with an order the admin shipped: `bun run seed:session --name <session> --order --shipped`.
+- A signed-in customer with an order the admin shipped: `bun run qa:arrange --case TC-ORD-002 --name <session>`.
 
 ## Steps
 

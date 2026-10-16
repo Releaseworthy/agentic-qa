@@ -7,13 +7,14 @@ covers: [BR-AUTH-01]
 priority: high
 status: ready
 automated_by: tests/ui/auth.spec.ts › Sign up and sign in › a weak password is refused with the rule spelled out
+setup: { recipe: guest }
 ---
 
 # TC-AUTH-002 — A weak password is refused with the rule spelled out
 
 ## Preconditions
 
-- Signed out.
+- Signed out, nothing created: `bun run qa:arrange --case TC-AUTH-002 --name <session>`; name and email from `testData.registration`.
 
 ## Test data
 

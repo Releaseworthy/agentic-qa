@@ -7,17 +7,18 @@ covers: [BR-PAY-01]
 priority: critical
 status: ready
 automated_by: tests/ui/checkout.spec.ts › Checkout › a declined card keeps the customer on checkout with the reason
+setup: { recipe: cart, priceCents: 1000, stock: 5, quantity: 1 }
 ---
 
 # TC-CHK-001 — A declined card keeps the customer on checkout
 
 ## Preconditions
 
-- A signed-in customer with one product (stock 5) in the cart, set up over the API.
+- A signed-in customer with a $10.00 product (stock 5) in the cart: `bun run qa:arrange --case TC-CHK-001 --name <session>`.
 
 ## Test data
 
-Card `4000000000000002`, expiry `12/34`, CVC `123`; any valid US address.
+Card `testData.cards.DECLINED` (`4000000000000002`; expiry and CVC from the arrange output), address `testData.address`.
 
 ## Steps
 

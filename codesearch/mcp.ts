@@ -17,7 +17,7 @@ const server = new McpServer(
     instructions:
       'Search this repository: search_code (hybrid ripgrep + import graph, ranked files with lines and symbols), ' +
       'grep (raw ripgrep), find_symbol (definitions + usages), related_files (imports / importers), ' +
-      'list_helpers (API helpers, seed, page objects, fixtures — reuse these before writing new code).',
+      'list_helpers (API helpers, seed and precondition recipes, page objects, fixtures — reuse these before writing new code).',
   },
 );
 
@@ -75,7 +75,7 @@ server.registerTool(
   'list_helpers',
   {
     description:
-      'Reusable framework building blocks with signatures: api helpers, seed (test data), page objects, fixtures.',
+      'Reusable framework building blocks with signatures: api helpers, seed (test data), recipes (named preconditions), page objects, fixtures.',
     inputSchema: { area: z.enum(['api', 'pages', 'setup', 'data', 'fixtures']).optional() },
   },
   ({ area }) => text(listHelpers(area)),
