@@ -99,23 +99,19 @@ test.describe('Cart', { tag: '@FEAT-CART' }, () => {
     });
   });
 
-  test(
-    'an expired coupon is refused',
-    { tag: ['@FEAT-COUPON', '@BR-COUP-03'] },
-    async ({ arrange, cartPage }) => {
-      await test.step('Given a $40.00 cart (TC-COUP-003 setup)', async () => {
-        await arrange('cart', { priceCents: 4000, stock: 10, quantity: 1 });
-      });
+  test('an expired coupon is refused', { tag: ['@FEAT-COUPON', '@BR-COUP-03'] }, async ({ arrange, cartPage }) => {
+    await test.step('Given a $40.00 cart (TC-COUP-003 setup)', async () => {
+      await arrange('cart', { priceCents: 4000, stock: 10, quantity: 1 });
+    });
 
-      await test.step('When the expired SUMMER20 is applied', async () => {
-        await cartPage.goto();
-        await cartPage.applyCoupon('SUMMER20');
-      });
+    await test.step('When the expired SUMMER20 is applied', async () => {
+      await cartPage.goto();
+      await cartPage.applyCoupon('SUMMER20');
+    });
 
-      await test.step('Then it is refused and nothing is discounted', async () => {
-        await expect(cartPage.alert, 'expired-coupon error').toHaveText('This coupon has expired');
-        await expect(cartPage.totals.discount, 'no discount after the refusal').toHaveText('-$0.00');
-      });
-    },
-  );
+    await test.step('Then it is refused and nothing is discounted', async () => {
+      await expect(cartPage.alert, 'expired-coupon error').toHaveText('This coupon has expired');
+      await expect(cartPage.totals.discount, 'no discount after the refusal').toHaveText('-$0.00');
+    });
+  });
 });
