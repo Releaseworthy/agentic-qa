@@ -140,7 +140,14 @@ class Evaluation:
 
 
 def learning_id(title: str) -> str:
-    return "LRN-" + re.sub(r"[^A-Z0-9]+", "-", title.upper()).strip("-")[:40].strip("-")
+    """LRN- plus the title's words, cut at a word boundary (at most 40 characters after the prefix)."""
+    words = re.sub(r"[^A-Z0-9]+", "-", title.upper()).strip("-").split("-")
+    out = ""
+    for w in words:
+        if out and len(out) + 1 + len(w) > 40:
+            break
+        out = f"{out}-{w}" if out else w[:40]
+    return "LRN-" + out
 
 
 def _dump(meta: dict[str, Any]) -> str:
@@ -171,7 +178,9 @@ def render_learning(doc_id: str, p: Proposal, prior: Document | None, today: dat
         "created": str(prior.meta.get("created", today.isoformat())) if prior else today.isoformat(),
         "updated": today.isoformat(),
     }
-    return f"---\n{_dump(meta)}\n---\n\n# {p.title}\n\n{p.body}\n"
+    # The title is the H1; a lesson that opens with its own heading would show it twice.
+    body = re.sub(r"\A#\s[^\n]*\n+", "", p.body)
+    return f"---\n{_dump(meta)}\n---\n\n# {p.title}\n\n{body}\n"
 
 
 def render_deprecated(target: Document, reason: str, today: date) -> str:
@@ -482,7 +491,7 @@ def decide(proposal_id: str, verdict: Verdict, scores: dict[str, int], rationale
 
 def append_ledger(entry: dict[str, Any]) -> None:
     CURATION_DIR.mkdir(parents=True, exist_ok=True)
-    with LEDGER.open("a", encoding="utf-8") as f:
+    with LEDGER.open("a", encoding="utf-8", newline="\n") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 
@@ -495,7 +504,7 @@ def _write_learned(rows: list[dict[str, Any]]) -> None:
         "# Probe questions of accepted knowledge changes, appended by rag.curate. Each one must keep\n"
         "# retrieving its document, so a later change cannot make learned knowledge unfindable.\n"
     )
-    LEARNED.write_text(header + (yaml.safe_dump(rows, sort_keys=False, allow_unicode=True, width=1000) if rows else "[]\n"), encoding="utf-8")
+    LEARNED.write_text(header + (yaml.safe_dump(rows, sort_keys=False, allow_unicode=True, width=1000) if rows else "[]\n"), encoding="utf-8", newline="\n")
 
 
 def add_probe(question: str, doc_id: str, proposal_id: str) -> None:
@@ -526,7 +535,7 @@ def write_human_proposal(proposal_id: str, raw: dict[str, Any], ev: dict[str, An
         f"## Proposed change\n\n~~~~diff\n{diff}~~~~\n"
     )
     path = PROPOSALS_DIR / f"{proposal_id}.md"
-    path.write_text(text, encoding="utf-8")
+    path.write_text(text, encoding="utf-8", newline="\n")
     return path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else path.as_posix()
 
 

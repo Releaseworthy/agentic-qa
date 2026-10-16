@@ -160,12 +160,13 @@ pre-approved tools (anything else is denied), takes a zod-defined result CI can 
 cost and per-model usage to `out/agent-runs/<id>/`. Agents write and run code, so the hook is not a sandbox: in CI the
 agent job has a read-only GitHub token, and a separate job publishes its patch (see CI/CD).
 
-Two real headless runs:
+Three real headless runs:
 
 | Run                                              | Result                                                                                                                                                                                                                                                                                   | Cost  |
 | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
 | `refine-ac CARD-142`                             | 13 questions for Product with proposed defaults, 8 Given/When/Then criteria with boundaries, and conflicts found with the free-shipping and discount-cap rules. Passed review on round 2. [Output](docs/examples/refine-ac-CARD-142.md) · [run](docs/examples/refine-ac-CARD-142.run.md) | $1.17 |
 | `adhoc-test "<cart and order totals>" --defects` | Haiku explorers in 5 parallel browser sessions found **all 4 planted defects**, each confirmed with an API repro and screenshots. [Notes](docs/examples/adhoc-test-seeded-defects.md) · [run](docs/examples/adhoc-test-seeded-defects.run.md)                                            | $0.77 |
+| `learn "<review feedback>"`                      | The full self-improvement loop: no duplicate found, gate passed, the probe ranked the lesson first, the independent curator scored it 4–5 and committed it, and its probe joined the golden set. [Walkthrough](docs/examples/learn-review-feedback.md)                                   | $0.53 |
 
 ### Hybrid RAG: the knowledge vault
 

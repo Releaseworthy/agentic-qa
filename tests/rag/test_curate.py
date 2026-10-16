@@ -134,6 +134,15 @@ class TestLearningProvenance:
         same = parse(Path("LRN-X.md"), curate.render_learning("LRN-X", agent, first, TODAY))
         assert same.meta["support"] == 1, "the same source repeating itself is not independent support"
 
+    def test_a_lesson_that_opens_with_its_title_shows_it_once(self) -> None:
+        p = curate.Proposal.from_dict(proposal(body="# Run playwright-cli state-load after open\n\n- open first."))
+        assert curate.render_learning("LRN-X", p, None, TODAY).count("# Run playwright-cli") == 1
+
+    def test_ids_are_cut_at_a_word_boundary(self) -> None:
+        lid = curate.learning_id("Never write TypeScript through double-quoted PowerShell strings")
+        assert lid == "LRN-NEVER-WRITE-TYPESCRIPT-THROUGH-DOUBLE"
+        assert curate.learning_id("Waits") == "LRN-WAITS"
+
 
 class TestGateEndToEnd:
     """Real embeddings on a throwaway index; the live index is not touched."""

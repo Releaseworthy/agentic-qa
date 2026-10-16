@@ -147,7 +147,7 @@ def _write(path: Path, content: str) -> dict[str, Any]:
     if clash and (ROOT / clash.path).resolve() != resolved:
         raise ValueError(f"id {doc.id} already belongs to {clash.path}")
     resolved.parent.mkdir(parents=True, exist_ok=True)
-    resolved.write_text(content if content.endswith("\n") else content + "\n", encoding="utf-8")
+    resolved.write_text(content if content.endswith("\n") else content + "\n", encoding="utf-8", newline="\n")
     s = state()
     chunks = index_document(doc, s.vector)
     rebuild_graph(load_vault())
