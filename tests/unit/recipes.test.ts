@@ -12,6 +12,7 @@ const tc = (setup: TestCase['setup'], status = 'ready'): TestCase => ({
   feature: 'FEAT-CART',
   covers: [],
   priority: 'high',
+  status,
   automatedBy: 'none',
   setup,
 });
@@ -60,15 +61,19 @@ describe('checkCases', () => {
     ).toEqual(['no `setup` — name th', 'setup.recipe "basket', 'setup params']);
   });
 
-  it('flags preconditions that set themselves up, and skips obsolete cases', () => {
+  it('flags preconditions that set themselves up, and skips deprecated cases', () => {
     const own = '## Preconditions\n\n- A cart, set up over the API.\n';
     expect(
       checkCases([tc({ recipe: 'cart', params: {} })], () => own).length,
       'hand-made setup, no --case command',
     ).toBe(2);
     expect(
-      checkCases([tc(undefined, 'obsolete')], () => own),
-      'obsolete cases are not run',
+      checkCases([tc(undefined, 'deprecated')], () => own),
+      'deprecated cases are not run',
     ).toEqual([]);
+    expect(
+      checkCases([tc(undefined, 'outdated')], () => own),
+      'an outdated case is still checked: it runs again once updated',
+    ).toEqual([expect.stringContaining('no `setup`')]);
   });
 });

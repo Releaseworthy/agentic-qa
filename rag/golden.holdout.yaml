@@ -1,6 +1,7 @@
-# Held-out retrieval questions: written after the ranking priors (DERIVED_WEIGHT in rag/hybrid.py) were tuned on
-# rag/golden.yaml, and never used to tune anything. `bun run rag:eval` reports them separately, so the headline
-# numbers are not only in-sample. Add questions here; never change the ranking to make one of these pass.
+# Held-out retrieval questions: never used to tune or choose anything. The first 14 were written after the ranking
+# priors (DERIVED_WEIGHT in rag/hybrid.py) were tuned on rag/golden.yaml; the rest on 2026-10-17, before any of them
+# was run. `bun run rag:eval` reports them separately, so the headline numbers are not only in-sample. Add questions
+# here; never change the ranking to make one of these pass — choose changes on rag/golden.dev.yaml.
 
 - q: If my card expires at the end of this month, can I still pay with it?
   expected: [BR-PAY-01]
@@ -44,3 +45,139 @@
 - q: What makes a coupon drop off a cart after it was applied?
   expected: [BR-COUP-02]
   facts: ['minimum']
+# Added 2026-10-17.
+- q: What does the API answer when the right password is used on a locked account?
+  expected: [BR-AUTH-02]
+  facts: ['423', 'ACCOUNT_LOCKED']
+- q: Does a successful sign-in reset the failed-attempt counter?
+  expected: [BR-AUTH-02]
+  facts: ['resets']
+- q: Is a 64-character password accepted?
+  expected: [BR-AUTH-01]
+  facts: ['accepted']
+- q: Can a cart line be set to zero units, and what happens then?
+  expected: [BR-CART-01, FEAT-CART]
+  facts: ['removes the line']
+- q: I have 6 of an item in my cart and add 5 more — what happens?
+  expected: [BR-CART-01]
+  facts: ['422']
+- q: What message does a shopper see when asking for more units than are in stock?
+  expected: [BR-CART-02]
+  facts: ['left in stock']
+- q: What happens at checkout if someone else bought the last units after I put them in my cart?
+  expected: [BR-CART-02, FEAT-CHECKOUT]
+  facts: ['409', 'OUT_OF_STOCK']
+- q: If I apply SAVE5 and then WELCOME10, which discount stays on the cart?
+  expected: [BR-COUP-01]
+  facts: ['replaces']
+- q: Is a coupon accepted when the subtotal is exactly its minimum?
+  expected: [BR-COUP-02]
+  facts: ['accepted']
+- q: Which seeded coupon has already expired?
+  expected: [BR-COUP-03, FEAT-COUPON]
+  facts: ['SUMMER20']
+- q: How is a percentage discount rounded?
+  expected: [BR-COUP-04]
+  facts: ['to the cent']
+- q: What does a customer get when trying to cancel the same order twice?
+  expected: [BR-ORD-01]
+  facts: ['409', 'NOT_CANCELLABLE']
+- q: When a cancelled order's items go back into stock, can other shoppers buy them right away?
+  expected: [BR-ORD-02]
+  facts: ['straight away']
+- q: Why does the API answer 404 rather than 403 for someone else's order?
+  expected: [BR-ORD-03]
+  facts: ['probed']
+- q: Can an admin look at any customer's order?
+  expected: [BR-ORD-03]
+  facts: ['any order']
+- q: Are spaces and dashes allowed in a card number?
+  expected: [BR-PAY-01]
+  facts: ['ignored']
+- q: What happens to the cart when the payment is refused?
+  expected: [BR-PAY-01, FEAT-CHECKOUT]
+  facts: ['kept']
+- q: Does an empty cart pay shipping?
+  expected: [BR-SHIP-01]
+  facts: ['no shipping']
+- q: A 52 dollar cart with WELCOME10 applied — does it ship free?
+  expected: [BR-SHIP-01]
+  facts: ['46.80']
+- q: How long is a sign-in token valid?
+  expected: [FEAT-AUTH]
+  facts: ['8 hours']
+- q: Are email addresses case-sensitive when registering?
+  expected: [FEAT-AUTH]
+  facts: ['lower-case']
+- q: Which categories can the catalog be filtered by?
+  expected: [FEAT-CATALOG]
+  facts: ['books', 'electronics', 'home', 'toys']
+- q: How are products sorted in the catalog by default?
+  expected: [FEAT-CATALOG]
+  facts: ['name']
+- q: What does the cart count in the header add up?
+  expected: [FEAT-CART]
+  facts: ['sum of quantities']
+- q: Which states can an order move between?
+  expected: [FEAT-ORDERS, BR-ORD-01]
+  facts: ['placed', 'shipped', 'cancelled']
+- q: Who ships an order, and through which endpoint?
+  expected: [FEAT-ORDERS]
+  facts: ['POST /api/admin/orders/:id/ship']
+- q: Are coupon codes case-sensitive?
+  expected: [FEAT-COUPON]
+  facts: ['case-insensitive']
+- q: What does checkout answer when the cart is empty?
+  expected: [FEAT-CHECKOUT]
+  facts: ['400', 'EMPTY_CART']
+- q: In which order are subtotal, discount, shipping and total computed?
+  expected: [PRODUCT, BR-SHIP-01]
+  facts: ['subtotal', 'discount', 'shipping']
+- q: Which HTTP status means a business limit was hit?
+  expected: [PRODUCT]
+  facts: ['422']
+- q: Which products can't be gift-wrapped?
+  expected: [CARD-142]
+  facts: ['electronics']
+- q: What is Engineering's open question about refunds?
+  expected: [CARD-157]
+  facts: ['partial refunds']
+- q: Will a customer be able to get a refund for a shipped order?
+  expected: [CARD-157]
+  facts: ['cannot be refunded']
+- q: Which defects are still open?
+  expected: [DEF-001]
+  facts: ['DEF-001']
+- q: How was the PATCH quantity bug fixed?
+  expected: [DEF-002]
+  facts: ['checkQuantity']
+- q: Which manual test covers the account lockout?
+  expected: [TC-AUTH-003]
+  facts: ['TC-AUTH-003']
+- q: Is there a manual case for applying a coupon below its minimum?
+  expected: [TC-COUP-001]
+  facts: ['TC-COUP-001']
+- q: Which manual test checks that a customer returns to the cart after signing in?
+  expected: [TC-AUTH-004]
+  facts: ['TC-AUTH-004']
+- q: Do we have a manual test for searching the catalog?
+  expected: [TC-CAT-001]
+  facts: ['TC-CAT-001']
+- q: Why must every test register its own customer?
+  expected: [LRN-TEST-DATA]
+  facts: ['one cart per user']
+- q: Should a page object wait for networkidle after navigating?
+  expected: [LRN-UI-WAITS]
+  facts: ['data-ready']
+- q: Can I add a few extra assertions to a test while I'm in there?
+  expected: [LRN-SCOPE]
+  facts: ['one behaviour per test']
+- q: How do I arrange an out-of-stock product for a manual test?
+  expected: [SETUP-RECIPES]
+  facts: ['stock=0']
+- q: Which recipe gives me a cart with a coupon already applied?
+  expected: [SETUP-RECIPES]
+  facts: ['coupon']
+- q: Which precondition can I use on live, where nothing may be created?
+  expected: [SETUP-RECIPES]
+  facts: ['returning-customer']

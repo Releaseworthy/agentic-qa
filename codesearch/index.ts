@@ -5,7 +5,7 @@
  * API helpers).
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { Glob } from 'bun';
 
@@ -102,18 +102,31 @@ function parseFile(path: string, text: string, aliases: Aliases): CodeFile {
   return { path, imports: [...imports], symbols, lines: lines.length };
 }
 
-let cached: CodeIndex | undefined;
+let cached: { index: CodeIndex; stamp: string } | undefined;
 
-/** Builds (once per process) the index of every .ts file in SCOPE. */
+/** Every .ts file in SCOPE, and a stamp of their paths and modification times (plus tsconfig's, for the aliases). */
+function scan(): { paths: string[]; stamp: string } {
+  const paths: string[] = [];
+  for (const dir of SCOPE)
+    for (const rel of new Glob(`${dir}/**/*.ts`).scanSync({ cwd: ROOT })) paths.push(rel.replaceAll('\\', '/'));
+  paths.sort();
+  const mtime = (p: string): number => statSync(join(ROOT, p)).mtimeMs;
+  return {
+    paths,
+    stamp: [`tsconfig.json:${mtime('tsconfig.json')}`, ...paths.map((p) => `${p}:${mtime(p)}`)].join('|'),
+  };
+}
+
+/**
+ * The index of every .ts file in SCOPE. Cached, and rebuilt whenever a file was added, removed or changed since — the
+ * codesearch MCP server lives as long as an agent session, which writes page objects and helpers as it goes.
+ */
 export function codeIndex({ fresh = false } = {}): CodeIndex {
-  if (cached && !fresh) return cached;
+  const { paths, stamp } = scan();
+  if (cached && !fresh && cached.stamp === stamp) return cached.index;
   const aliases = loadAliases();
   const files = new Map<string, CodeFile>();
-  for (const dir of SCOPE)
-    for (const rel of new Glob(`${dir}/**/*.ts`).scanSync({ cwd: ROOT })) {
-      const path = rel.replaceAll('\\', '/');
-      files.set(path, parseFile(path, readFileSync(join(ROOT, path), 'utf8'), aliases));
-    }
+  for (const path of paths) files.set(path, parseFile(path, readFileSync(join(ROOT, path), 'utf8'), aliases));
   const importers = new Map<string, Set<string>>();
   for (const f of files.values())
     for (const target of f.imports) {
@@ -121,8 +134,9 @@ export function codeIndex({ fresh = false } = {}): CodeIndex {
       if (!set) importers.set(target, (set = new Set()));
       set.add(f.path);
     }
-  cached = { files, importers, symbols: [...files.values()].flatMap((f) => f.symbols) };
-  return cached;
+  const index: CodeIndex = { files, importers, symbols: [...files.values()].flatMap((f) => f.symbols) };
+  cached = { index, stamp };
+  return index;
 }
 
 /** Files reachable from `path` within `depth` hops, each way: what it imports and what imports it. */

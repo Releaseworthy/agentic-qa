@@ -4,3 +4,7 @@
   expected:
     - LRN-NEVER-WRITE-TYPESCRIPT-THROUGH-DOUBLE-QU
   from: PROP-20261017-ea3c21
+- q: A new test exposed a product bug — how do I pin it with test.fail so the heal guard accepts the patch?
+  expected:
+    - LRN-SCOPE
+  from: PROP-20261017-b37b95

@@ -9,7 +9,7 @@ argument-hint: "<TC-… | --unautomated [FEAT-…]>"
 Read `.claude/rules/orchestration.md` first.
 
 1. **Select:** the ids given, or `--unautomated` → cases with `automated_by: none` (optionally of one feature),
-   highest priority first. Skip `status: draft` cases — walk them first (`run-testcases`).
+   highest priority first. Skip `draft` cases (walk them first, `run-testcases`) and `outdated` ones (update them first).
 2. **Ground, in parallel:** `knowledge-scout` — each case with its rules. `code-scout` — the page objects, seed
    helpers and existing spec for the area, and which page-object actions the steps need that don't exist yet.
    Missing locators → one `ui-explorer` session to record them (`generate-locator`, the request each action waits for).
@@ -19,7 +19,8 @@ Read `.claude/rules/orchestration.md` first.
 4. **Delegate** to `test-author`: one test per case, titled like the case, tagged `@FEAT`/`@BR` from `covers`,
    the case's `setup` as the Given step via the `arrange` fixture (`await arrange('<recipe>', { …params })` — the same state the manual run arranges; with `account: Account.NEW_CUSTOMER` it belongs to the signed-in customer), each case step a `test.step` named after it, every assertion carrying the
    expected result as its message. Validate with `--grep`, typecheck, lint.
-5. **Review:** `test-reviewer` (≤ 2 rounds). `PRODUCT_BUG` → `qa-writer` defect, test stays `test.fail` with the id.
+5. **Review:** `test-reviewer` (≤ 2 rounds). `PRODUCT_BUG` → `qa-writer` files the defect, then `test-author` pins the
+   test with its id (`test.fail(true, 'DEF-…: …')`, `@DEF-…`).
 6. **Link:** `qa-writer` sets each case's `automated_by` to `<spec> › <describe> › <title>`.
 7. **Reflect:** `.claude/rules/self-improve.md`.
 

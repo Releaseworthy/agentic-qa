@@ -4,7 +4,7 @@
 #   docker build -f rag/Dockerfile -t knowledge-mcp .
 #   docker run -p 8765:8765 -e NEO4J_URI=… -e NEO4J_PASSWORD=… knowledge-mcp
 #
-# Deploys as-is to Azure Container Apps (see README › Shared MCP endpoint).
+# Deploys as-is to Azure Container Apps (see docs/knowledge.md › Shared MCP endpoint).
 FROM python:3.12-slim
 
 COPY --from=ghcr.io/astral-sh/uv:0.12 /uv /uvx /usr/local/bin/

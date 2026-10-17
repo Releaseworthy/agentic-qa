@@ -55,7 +55,7 @@ jobs:
         run: bun run qa:vault
 
   heal-guard:
-    name: heal guard
+    name: heal guard · knowledge guard
     if: github.event_name == 'pull_request' || inputs.heal_base != ''
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -78,6 +78,13 @@ jobs:
           HEAD: ${{ github.head_ref || github.ref_name }}
           BODY: ${{ github.event.pull_request.body }}
           INTENDED: ${{ inputs.intended }}
+      # Blocking for agent branches: vault changes only as the curation ledger records them. A report for humans,
+      # who edit Product's documents by hand.
+      - name: Vault changes went through curation
+        run: bun run qa:knowledge-guard --base "origin/$BASE" || [[ "$HEAD" != agentic/* ]]
+        env:
+          BASE: ${{ github.base_ref || inputs.heal_base }}
+          HEAD: ${{ github.head_ref || github.ref_name }}
 
   rag:
     name: hybrid RAG · ${{ matrix.graph }}

@@ -20,7 +20,7 @@
 import { parseArgs } from 'node:util';
 import { latestResults, readRuns, type ManualResult } from '@qa/manual-runs';
 import { table, setOutputs, writeReport } from '@qa/report';
-import { listTests, readResults, traceTags, type TestRecord } from '@qa/tests-catalog';
+import { listTests, readResults, traceTags, withResults, type TestRecord } from '@qa/tests-catalog';
 import { trace } from '@qa/traceability';
 import { SEVERITY_RANK, Vault } from '@qa/vault';
 
@@ -55,7 +55,11 @@ export type GateReport = {
 
 const MIN_PASS_RATE = 0.95;
 
-/** `catalog`: every test the suite defines — coverage is judged on it, so an impact-selected run doesn't read as missing tests. */
+/**
+ * `catalog`: every test the suite defines, with this run's results laid over it (`withResults`) — coverage is judged
+ * on it, so an impact-selected run doesn't read as missing tests, and a `test.fail` pin or a skip that ran counts as
+ * what it is.
+ */
 export function assess(
   vault: Vault,
   results: TestRecord[],
@@ -220,7 +224,8 @@ if (import.meta.main) {
   const results = readResults(values.results);
   const projects = [...new Set(results.map((t) => t.project))];
   const manual = latestResults(readRuns(values.manual));
-  const report = assess(new Vault(), results, listTests(projects.length ? projects : undefined), manual);
+  const catalog = withResults(listTests(projects.length ? projects : undefined), results);
+  const report = assess(new Vault(), results, catalog, manual);
   const md = toMarkdown(report);
   writeReport('release-gate', report, md);
   setOutputs({ decision: report.decision });

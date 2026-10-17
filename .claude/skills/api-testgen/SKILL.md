@@ -16,7 +16,7 @@ Read `.claude/rules/orchestration.md` first.
 3. **Case design** per endpoint (write it down before code): happy path; each validation (missing/invalid field, wrong type); each business rule at its boundaries (below, at, above); auth (no token, someone else's resource); state conflicts. Skip cases an existing test already covers.
 4. **Delegate** to `test-author`: the endpoint list, the case table with exact expected values and DOC-ids, the target spec file(s), the helpers to reuse, missing helpers to add. One `describe` per endpoint, tags `@FEAT-…` + `@BR-…`.
 5. **Review** with `test-reviewer` (≤ 2 rounds).
-6. A `PRODUCT_BUG` from the author → `qa-writer` writes the defect (`DEF-…`), the test stays `test.fail` with the id.
+6. A `PRODUCT_BUG` from the author → `qa-writer` writes the defect (`DEF-…`, confirmed by the API repro in `.claude/rules/bug-lifecycle.md`), then `test-author` pins the test with that id (`test.fail(true, 'DEF-…: …')`, `@DEF-…`).
 7. **Reflect: `.claude/rules/self-improve.md`.**
 
 Final response: per endpoint the cases added (titles, tags), the run command and result, product bugs found (DEF ids), review verdict.

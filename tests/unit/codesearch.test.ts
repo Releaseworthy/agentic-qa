@@ -1,6 +1,9 @@
+import { statSync, utimesSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'bun:test';
-import { codeIndex, related } from '@codesearch/index';
+import { codeIndex, related, ROOT } from '@codesearch/index';
 import { findSymbol, listHelpers, search, terms } from '@codesearch/search';
+import { now, shift } from '@utils/date';
 
 describe('terms', () => {
   it('splits camelCase and drops stop words and short words', () => {
@@ -31,5 +34,18 @@ describe('code index (this repository)', () => {
 
   it('lists the data-setup helpers', () => {
     expect(listHelpers('setup')['framework/setup/seed.ts']?.join('\n')).toContain('Seed.async product(');
+  });
+
+  it('is rebuilt when a file changes, so a long MCP session sees what an agent just wrote', () => {
+    const file = join(ROOT, 'tests', 'unit', 'fakes.ts');
+    const before = statSync(file);
+    expect(codeIndex(), 'nothing changed: the cached index').toBe(codeIndex());
+    const cachedIndex = codeIndex();
+    try {
+      utimesSync(file, before.atime, shift(now(), { seconds: 5 }));
+      expect(codeIndex(), 'a file changed: a fresh index').not.toBe(cachedIndex);
+    } finally {
+      utimesSync(file, before.atime, before.mtime);
+    }
   });
 });

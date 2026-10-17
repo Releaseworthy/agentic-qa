@@ -1,0 +1,75 @@
+# Development questions: a ranking change is chosen on these (and rag/golden.yaml), then judged once on
+# rag/golden.holdout.yaml. Written before any of them was run. `bun run rag:eval` reports them separately.
+
+- q: Does signing out invalidate the token?
+  expected: [FEAT-AUTH]
+  facts: ['401']
+- q: Is the password policy also enforced when a customer changes their password?
+  expected: [BR-AUTH-01]
+  facts: ['registration only']
+- q: Do sign-in attempts with an unknown email count towards a lockout?
+  expected: [BR-AUTH-02]
+  facts: ['not counted']
+- q: What limits apply when a cart line's quantity is updated through the API?
+  expected: [BR-CART-01]
+  facts: ['422', 'QTY_LIMIT']
+- q: Can a product with zero stock be put in the cart?
+  expected: [BR-CART-02, TC-CAT-002, FEAT-CATALOG]
+  facts: ['cannot']
+- q: How do I take a coupon off the cart again?
+  expected: [BR-COUP-01, FEAT-COUPON]
+  facts: ['DELETE /api/cart/coupon']
+- q: Is the coupon minimum checked against the subtotal before or after the discount?
+  expected: [BR-COUP-02]
+  facts: ['before discount']
+- q: How much does a 50 dollar fixed coupon take off a 12 dollar cart?
+  expected: [BR-COUP-04]
+  facts: ['$12']
+- q: Can a customer cancel an order that is already cancelled?
+  expected: [BR-ORD-01]
+  facts: ['409']
+- q: How is restocking after a cancellation verified?
+  expected: [BR-ORD-02, TC-ORD-001]
+  facts: ['after cancel']
+- q: Which CVC lengths does the payment gateway accept?
+  expected: [BR-PAY-01]
+  facts: ['3 or 4']
+- q: What shipping fee does a 49.99 dollar order pay?
+  expected: [BR-SHIP-01]
+  facts: ['4.99']
+- q: What does the product page show when nothing is left in stock?
+  expected: [FEAT-CATALOG, TC-CAT-002]
+  facts: ['Out of stock']
+- q: What happens when two customers hold the last units in their carts?
+  expected: [FEAT-CART, BR-CART-02]
+  facts: ['first to check out']
+- q: Which features does the cart depend on?
+  expected: [FEAT-CART]
+  facts: ['FEAT-AUTH', 'FEAT-CATALOG']
+- q: What does the confirmation page say after an order is placed?
+  expected: [FEAT-CHECKOUT, TC-CHK-003]
+  facts: ['Thank you!']
+- q: How much does gift wrapping cost in the draft acceptance criteria?
+  expected: [CARD-142]
+  facts: ['$3']
+- q: What should happen if a refund fails at the payment gateway?
+  expected: [CARD-157]
+  facts: ['stays placed']
+- q: Which defect did API test generation find?
+  expected: [DEF-002]
+  facts: ['DEF-002']
+- q: Is there a manual test for registering a new account?
+  expected: [TC-AUTH-001]
+  facts: ['TC-AUTH-001']
+- q: How should a flaky UI step be fixed?
+  expected: [LRN-UI-WAITS]
+  facts: ['request']
+- q: How do I get a cancelled order as the starting point of a manual run?
+  expected: [SETUP-RECIPES]
+  facts: ['status=cancelled']
+- q: What does a 402 status mean in ShopLite?
+  expected: [PRODUCT, BR-PAY-01]
+  facts: ['declined']
+- q: Which manual test proves a shipped order offers no cancel button?
+  expected: [TC-ORD-002]
+  facts: ['TC-ORD-002']

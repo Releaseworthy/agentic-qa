@@ -147,7 +147,7 @@ def _write(path: Path, content: str) -> dict[str, Any]:
     if clash and (ROOT / clash.path).resolve() != resolved:
         raise ValueError(f"id {doc.id} already belongs to {clash.path}")
     resolved.parent.mkdir(parents=True, exist_ok=True)
-    resolved.write_text(content if content.endswith("\n") else content + "\n", encoding="utf-8", newline="\n")
+    resolved.write_text(curate.written(content), encoding="utf-8", newline="\n")
     s = state()
     chunks = index_document(doc, s.vector)
     rebuild_graph(load_vault())
@@ -175,17 +175,31 @@ ARTIFACTS: dict[str, dict[str, Any]] = {
 
 
 def check_artifact(path: str, doc: Document) -> None:
-    """Raises unless `doc` is a QA artifact in its own folder, with its own id pattern and valid enums — so a write
-    can never land on a rule, feature or card, whatever type the content claims."""
+    """Raises unless `doc` is a QA artifact at a path of its own: in its folder (checked on the resolved path, so `..`
+    can't climb out of it), named after its id, not replacing another document — with its id pattern and valid enums.
+    A write can never land on a rule, feature or card, whatever type the content claims."""
     if doc.type in GENERATED:
         raise ValueError(f"a {doc.type} document is generated from code: change framework/setup/recipes.ts, then bun run qa:arrange --catalog")
     spec = ARTIFACTS.get(doc.type)
     if spec is None:
         raise ValueError(f"upsert_document writes test cases and defects; a {doc.type} goes through propose_knowledge")
-    if not path.replace("\\", "/").startswith(spec["folder"]):
+    resolved = (ROOT / path).resolve()
+    try:
+        rel = resolved.relative_to(ROOT.resolve()).as_posix()
+    except ValueError:
+        rel = ""
+    name = rel.removeprefix(spec["folder"])
+    if not rel.startswith(spec["folder"]) or "/" in name:
         raise ValueError(f"a {doc.type} lives in {spec['folder']}")
     if not spec["id"].match(doc.id):
         raise ValueError(f"a {doc.type} id matches {spec['id'].pattern}, got {doc.id!r}")
+    stem = Path(name).stem
+    if stem != doc.id and not stem.startswith(doc.id + "-"):
+        raise ValueError(f"a {doc.type} file is named after its id: {spec['folder']}{doc.id}….md, not {name}")
+    if resolved.exists():
+        current = parse(Path(rel), resolved.read_text(encoding="utf-8"))
+        if current.id != doc.id:
+            raise ValueError(f"{rel} holds {current.id} — {doc.id} gets a file of its own")
     for key, allowed in spec["enums"].items():
         if str(doc.meta.get(key)) not in allowed:
             raise ValueError(f"{key} is one of {sorted(allowed)}, got {doc.meta.get(key)!r}")

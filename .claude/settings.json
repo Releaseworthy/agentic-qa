@@ -18,19 +18,22 @@
       "Bash(gh pr view *)",
       "Bash(gh pr diff *)",
       "Bash(gh api *)",
+      "Bash(cd *)",
       "Bash(grep *)",
       "Bash(tail *)",
       "Bash(head *)",
       "Bash(cat *)",
       "Bash(ls *)",
-      "Bash(wc *)"
+      "Bash(wc *)",
+      "Bash(echo *)",
+      "Bash(sort *)"
     ],
     "deny": ["Bash(git push *)", "Bash(rm -rf *)"]
   },
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|mcp__knowledge__commit_knowledge|mcp__knowledge__upsert_document",
+        "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit|mcp__knowledge__commit_knowledge|mcp__knowledge__upsert_document",
         "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/agents/tool-policy-hook.ts\"", "timeout": 10 }]
       }
     ]

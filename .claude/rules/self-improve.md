@@ -28,5 +28,6 @@ Every run ends with a **reflection**. The vault only gets what passes the gate a
 6. **Report** each candidate in the final response: `<id> — accepted | rejected (why) | needs human (file)`;
    headless runs also list them under `knowledge` in the structured result.
 
-Never edit `knowledge/learnings/`, `rules/`, `features/`, `cards/` or `product/` by hand or with
-`upsert_document`. Test cases and defects are QA artifacts: `qa-writer` writes them, `test-reviewer` reviews them.
+Never edit `knowledge/learnings/`, `rules/`, `features/`, `cards/` or `product/` by hand (the tool-policy hook refuses
+Write/Edit and shell writes into `knowledge/`) or with `upsert_document`; the knowledge guard rejects a vault change
+the ledger doesn't record. Test cases and defects are QA artifacts: `qa-writer` writes them, `test-reviewer` reviews them.

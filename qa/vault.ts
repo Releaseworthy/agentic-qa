@@ -23,6 +23,8 @@ export type TestCase = Doc & {
   feature: string;
   covers: string[];
   priority: string;
+  /** draft → ready → outdated (waits for an update) → deprecated (retired: history, never run or counted). */
+  status: string;
   automatedBy: string;
   /** The framework recipe that arranges its preconditions (setup: { recipe: cart, priceCents: 5000 }). */
   setup: { recipe: string; params: Record<string, unknown> } | undefined;
@@ -103,13 +105,15 @@ export class Vault {
         priority: scalar(d.meta.priority),
         reported: scalar(d.meta.reported),
       }));
+    // A deprecated case is history: not run, arranged, counted for coverage or the gate.
     this.testCases = docs
-      .filter((d) => d.type === 'test-case')
+      .filter((d) => d.type === 'test-case' && d.meta.status !== 'deprecated')
       .map((d) => ({
         ...d,
         feature: scalar(d.meta.feature),
         covers: list(d.meta.covers),
         priority: scalar(d.meta.priority),
+        status: scalar(d.meta.status),
         automatedBy: scalar(d.meta.automated_by),
         setup: setupOf(d.meta.setup),
       }));

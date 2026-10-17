@@ -1,9 +1,13 @@
-"""Evaluates retrieval on rag/golden.yaml: vector-only vs graph-only vs hybrid.
+"""Evaluates retrieval: vector-only vs graph-only vs hybrid, on three question sets.
 
     uv run python -m rag.eval                 retrieval metrics; fails below the thresholds
     uv run python -m rag.eval --answers       also answer quality: Claude answers from the
                                               retrieved context; key facts + an LLM judge
                                               (needs ANTHROPIC_API_KEY)
+
+    golden.yaml (+ golden.learned.yaml)   the ranking priors were tuned here; learned probes keep knowledge findable
+    golden.dev.yaml                        a ranking change is chosen here
+    golden.holdout.yaml                    never used to tune or choose anything: the honest number
 
 Metrics per mode: hit@1, hit@k (any expected doc in the top k), MRR. With
 LANGSMITH_API_KEY set, the hybrid run is also logged to LangSmith as an
@@ -31,7 +35,9 @@ from rag.vector import VectorStore
 GOLDEN = Path(__file__).with_name("golden.yaml")
 # Questions accepted knowledge changes answer (written by rag.curate): once learned, a document must stay findable.
 LEARNED = Path(__file__).with_name("golden.learned.yaml")
-# Questions never used to tune the ranking: reported apart, so the headline numbers are not only in-sample.
+# Questions a ranking change is chosen on, apart from the ones the priors were fit to.
+DEV = Path(__file__).with_name("golden.dev.yaml")
+# Questions never used to tune or choose anything: reported apart, so the headline numbers are not only in-sample.
 HOLDOUT = Path(__file__).with_name("golden.holdout.yaml")
 OUT = ROOT / "out" / "rag-eval.json"
 K = 5
@@ -147,7 +153,14 @@ def answer_quality(retriever: HybridRetriever, cases: list[Case]) -> dict[str, A
                 }
             ],
         )
-        judged = json.loads(next(b.text for b in verdict.content if b.type == "text"))
+        if verdict.stop_reason == "refusal":
+            rows.append({"q": c.q, "answer": answer, "error": "judge refusal"})
+            continue
+        try:
+            judged = json.loads(next((b.text for b in verdict.content if b.type == "text"), ""))
+        except json.JSONDecodeError:
+            rows.append({"q": c.q, "answer": answer, "error": f"judge reply is not JSON (stop: {verdict.stop_reason})"})
+            continue
         facts = sum(1 for f in c.facts if f.lower() in answer.lower()) / max(1, len(c.facts))
         rows.append({"q": c.q, "answer": answer, "facts": round(facts, 2), **judged})
     ok = [r for r in rows if "error" not in r]
@@ -168,6 +181,8 @@ def main() -> None:
     cases = load_cases()
     retriever = HybridRetriever(load_vault(), VectorStore(), open_graph())
     report = run(retriever, cases)
+    dev = run(retriever, load_cases(learned=False, path=DEV))
+    report["dev"] = dev
     holdout = run(retriever, load_cases(learned=False, path=HOLDOUT))
     report["holdout"] = holdout
     experiment = log_to_langsmith(retriever, cases)
@@ -185,20 +200,22 @@ def main() -> None:
             lines.append(f"| {mode} | {m['hit@1']} | {m[f'hit@{K}']} | {m['mrr']} |")
         return "\n".join(lines)
 
-    table = markdown(report)
-    held = markdown(holdout)
-    print(f"Retrieval on {len(cases)} questions (k={K}):\n\n{table}\n")
-    for q in report["misses"]["hybrid"]:
-        print(f"  hybrid miss: {q['q']} expected {q['expected']} got {q['got']}")
-    print(f"\nHeld out, never tuned on ({holdout['cases']} questions):\n\n{held}\n")
-    for q in holdout["misses"]["hybrid"]:
-        print(f"  hybrid miss: {q['q']} expected {q['expected']} got {q['got']}")
+    sections = [
+        (f"Golden, the priors were tuned here ({report['cases']} questions)", report),
+        (f"Dev, ranking changes are chosen here ({dev['cases']} questions)", dev),
+        (f"Held out, never tuned on ({holdout['cases']} questions)", holdout),
+    ]
+    for title, r in sections:
+        print(f"{title}, k={K}:\n\n{markdown(r)}\n")
+        for q in r["misses"]["hybrid"]:
+            print(f"  hybrid miss: {q['q']} expected {q['expected']} got {q['got']}")
+        print()
     if "answers" in report:
         a = report["answers"]
         print(f"Answers ({a['model']}): faithful {a['faithfulness']} · answered {a['answered']} · facts {a['fact_coverage']}")
     if summary := os.environ.get("GITHUB_STEP_SUMMARY"):
         with open(summary, "a", encoding="utf-8") as f:
-            f.write(f"### RAG retrieval eval\n\n{table}\n\nHeld out ({holdout['cases']} questions):\n\n{held}\n")
+            f.write("### RAG retrieval eval\n\n" + "\n\n".join(f"{t}:\n\n{markdown(r)}" for t, r in sections) + "\n")
 
     hybrid = report["modes"]["hybrid"]
     failures = []
