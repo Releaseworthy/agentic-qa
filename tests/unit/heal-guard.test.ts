@@ -42,6 +42,23 @@ describe('assertions', () => {
   it('lists test titles, not steps', () => {
     expect(testTitles(original)).toEqual(['more than 10 units shows the limit @BR-CART-01']);
   });
+
+  it('reads a // inside a string, a template or a regex as code, not as a comment', () => {
+    const found = assertions(`
+      await expect(page.getByText('a // b'), 'label').toHaveText('a // b');
+      expect(\`x // \${y /* note */}\`, 'template').toBe(z); // a real comment
+      expect(/\\/\\//.test(url), 'regex').toBe(true);
+      expect(x, 'x').toBe(1);`);
+    expect(found.map((a) => a.message)).toEqual(["'label'", "'template'", "'regex'", "'x'"]);
+    expect(found[0]?.expected).toBe("'a // b'");
+  });
+
+  it('counts calls, not a helper declared with an assertion name', () => {
+    const helper = `export async function expectRefused(call: Promise<unknown>, status: number) {
+      expect(await call.catch((e: unknown) => e), 'refused').toBeInstanceOf(ApiError);
+    }`;
+    expect(assertions(helper).map((a) => a.matcher)).toEqual(['toBeInstanceOf']);
+  });
 });
 
 describe('review', () => {
@@ -147,6 +164,69 @@ describe('review', () => {
       after: 'z.object({ a: z.number() })',
     };
     expect(kinds(review([config, schema], OPEN, none))).toEqual(['suppressed:blocked', 'contract:blocked']);
+  });
+});
+
+describe('review: an assertion that can no longer fail the test', () => {
+  const check = "await expect(cartPage.total, 'total').toHaveText('$60.00');";
+  const total = spec(`
+  test('the total @BR-CART-01', async ({ cartPage }) => {
+    await test.step('Then the total', async () => {
+      ${check}
+    });
+  });`);
+  const around = (code: string): Change => ({ path: SPEC, before: total, after: total.replace(check, code) });
+  const weakened = (change: Change) =>
+    review([change], OPEN, () => 'BR-CART-01')
+      .filter((f) => f.kind === 'weakened')
+      .map((f) => `${f.detail}:${f.allowed ? 'ok' : 'blocked'}`);
+
+  it('blocks one moved under a try/catch, a .catch(), a condition or after a return or throw', () => {
+    const cases: Record<string, string> = {
+      'inside try/catch': `try { ${check} } catch {}`,
+      'inside .catch()': check.replace(';', '.catch(() => {});'),
+      'inside a catch block': `try { await cartPage.open(); } catch { ${check} }`,
+      'under an if': `if (false) ${check}`,
+      'under a ternary': "await (ready ? expect(cartPage.total, 'total').toHaveText('$60.00') : undefined);",
+      'under &&': `ready && (${check.replace(';', '')});`,
+      'under a switch case': `switch (currency) { case 'EUR': ${check} }`,
+      'unreachable after return': `return; ${check}`,
+      'unreachable after throw': `throw new Error('later'); ${check}`,
+    };
+    for (const [guard, code] of Object.entries(cases))
+      expect(weakened(around(code)), guard).toEqual([`cartPage.total: toHaveText('$60.00') is now ${guard}:blocked`]);
+  });
+
+  it('lets a try/finally, a catch that rethrows and an early return in another function through', () => {
+    for (const code of [
+      `try { ${check} } finally { await cartPage.close(); }`,
+      `try { ${check} } catch (error) { await cartPage.screenshot(); throw error; }`,
+      `const later = () => { return cartPage.total; }; ${check}`,
+    ])
+      expect(weakened(around(code)), code).toEqual([]);
+  });
+
+  it('judges the move, not the guard: an assertion that stays under its if, or leaves it, is fine', () => {
+    const guarded = around(`if (ready) ${check}`);
+    const reworded: Change = {
+      ...guarded,
+      before: guarded.after,
+      after: guarded.after.replace("'total'", "'cart total'"),
+    };
+    expect(weakened(reworded), 'still under the same if').toEqual([]);
+    expect(weakened({ ...guarded, before: guarded.after, after: total }), 'no longer guarded').toEqual([]);
+  });
+
+  it('sees an assertion removed after a // inside a string', () => {
+    const two = spec(`
+  test('labels @BR-CART-01', async ({ page }) => {
+    await test.step('Then the labels', async () => {
+      await expect(page.getByText('a // b'), 'label').toHaveText('a // b');
+      expect(count, 'count').toBe(1);
+    });
+  });`);
+    const after = two.replace("expect(count, 'count').toBe(1);", '');
+    expect(kinds(review([{ path: SPEC, before: two, after }], OPEN, none))).toEqual(['removed:blocked']);
   });
 });
 

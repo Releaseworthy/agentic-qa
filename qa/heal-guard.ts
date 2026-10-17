@@ -6,7 +6,9 @@
  *
  * Findings, per changed file:
  *   removed      an assertion or a test is gone                                   never allowed
- *   weakened     an assertion lost strength (exact value → partial → presence)    never allowed
+ *   weakened     an assertion lost strength (exact value → partial → presence),
+ *                or moved under a try/catch or .catch(), a condition (if, ternary,
+ *                && || ??, switch) or after a return / throw / break / continue   never allowed
  *   suppressed   skip / fixme / only / slow (also at runtime), a test.fail that
  *                doesn't pin an open DEF- the file tags, hard waits, timeouts,
  *                retries, configure(), toPass(); every occurrence counts          never allowed
@@ -27,6 +29,7 @@ import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { table, writeReport } from '@qa/report';
 import { ROOT, Vault, isOpen, type Doc } from '@qa/vault';
+import ts from 'typescript';
 
 export type Kind = 'removed' | 'weakened' | 'suppressed' | 'expected' | 'data' | 'contract' | 'maintenance';
 export type Finding = { file: string; kind: Kind; detail: string; allowed: boolean; evidence?: string };
@@ -85,15 +88,55 @@ export type Assertion = {
   not: boolean;
   matcher: string;
   expected: string;
+  /** What around it can stop it from running or from failing the test (see `guardsOf`); empty when nothing. */
+  guards: string[];
 };
+
+/** A file parsed by the TypeScript compiler, and its text with every comment blanked out (same offsets). */
+type Source = { file: ts.SourceFile; code: string };
+
+const SOURCES = new Map<string, Source>();
+
+function source(src: string): Source {
+  const hit = SOURCES.get(src);
+  if (hit) return hit;
+  const file = ts.createSourceFile(
+    'heal-guard.ts',
+    src,
+    { languageVersion: ts.ScriptTarget.Latest, jsDocParsingMode: ts.JSDocParsingMode.ParseNone },
+    true,
+    ts.ScriptKind.TS,
+  );
+  // Every comment sits in the trivia before some token (the end-of-file token for the last ones).
+  const comments = new Map<number, number>();
+  const visit = (node: ts.Node): void => {
+    const children = node.getChildren(file);
+    for (const child of children) visit(child);
+    if (children.length) return;
+    for (const c of ts.getLeadingCommentRanges(src, node.pos) ?? []) comments.set(c.pos, c.end);
+    for (const c of ts.getTrailingCommentRanges(src, node.end) ?? []) comments.set(c.pos, c.end);
+  };
+  visit(file);
+  let code = '';
+  let at = 0;
+  for (const [start, end] of [...comments].sort(([a], [b]) => a - b)) {
+    if (start < at) continue;
+    code += src.slice(at, start) + ' '.repeat(end - start);
+    at = end;
+  }
+  code += src.slice(at);
+  if (SOURCES.size > 32) SOURCES.clear();
+  const parsed = { file, code };
+  SOURCES.set(src, parsed);
+  return parsed;
+}
+
+const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim();
+const textOf = (s: Source, node: ts.Node) => oneLine(s.code.slice(node.getStart(s.file), node.end));
 
 /** Comments out, whitespace collapsed: formatting never counts as a change. */
 function normalize(src: string): string {
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, ' ')
-    .replace(/(^|[^:'"`])\/\/.*$/gm, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return oneLine(source(src).code);
 }
 
 /** Index just past the bracket that closes the one at `open`, skipping strings. */
@@ -114,74 +157,161 @@ function close(s: string, open: number): number {
   return s.length;
 }
 
-/** Top-level comma-separated arguments of `args` (without the brackets). */
-function split(args: string): string[] {
-  const out: string[] = [];
-  let depth = 0;
-  let start = 0;
-  for (let i = 0; i < args.length; i++) {
-    const c = args[i];
-    if (c === "'" || c === '"' || c === '`') {
-      for (i++; i < args.length && args[i] !== c; i++) if (args[i] === '\\') i++;
-    } else if (c === '(' || c === '[' || c === '{') depth++;
-    else if (c === ')' || c === ']' || c === '}') depth--;
-    else if (c === ',' && depth === 0) {
-      out.push(args.slice(start, i).trim());
-      start = i + 1;
+const LOGICAL: ReadonlySet<ts.SyntaxKind> = new Set([
+  ts.SyntaxKind.AmpersandAmpersandToken,
+  ts.SyntaxKind.BarBarToken,
+  ts.SyntaxKind.QuestionQuestionToken,
+  ts.SyntaxKind.AmpersandAmpersandEqualsToken,
+  ts.SyntaxKind.BarBarEqualsToken,
+  ts.SyntaxKind.QuestionQuestionEqualsToken,
+]);
+
+/** Statements after which the rest of their block never runs. */
+const EXITS: Partial<Record<ts.SyntaxKind, string>> = {
+  [ts.SyntaxKind.ReturnStatement]: 'return',
+  [ts.SyntaxKind.ThrowStatement]: 'throw',
+  [ts.SyntaxKind.BreakStatement]: 'break',
+  [ts.SyntaxKind.ContinueStatement]: 'continue',
+};
+
+const statementsOf = (node: ts.Node): readonly ts.Statement[] | undefined =>
+  ts.isBlock(node) ||
+  ts.isSourceFile(node) ||
+  ts.isModuleBlock(node) ||
+  ts.isCaseClause(node) ||
+  ts.isDefaultClause(node)
+    ? node.statements
+    : undefined;
+
+/** A catch block swallows the failure unless it rethrows (a `throw` among its own statements). */
+const swallows = (clause: ts.CatchClause | undefined) =>
+  clause !== undefined && !clause.block.statements.some((s) => ts.isThrowStatement(s));
+
+/**
+ * What around a node can stop it from running or from failing the test, innermost first: a try/catch or a `.catch()`
+ * that swallows the failure, a catch block, a condition (if, ternary, `&&` `||` `??`, switch case), or a return /
+ * throw / break / continue before it in the same block. Loops and callbacks never called are not seen.
+ */
+function guardsOf(node: ts.Node): string[] {
+  const guards: string[] = [];
+  for (let child = node; !ts.isSourceFile(child); child = child.parent) {
+    const parent = child.parent;
+    if (ts.isTryStatement(parent)) {
+      if (child === parent.tryBlock && swallows(parent.catchClause)) guards.push('inside try/catch');
+      else if (child === parent.catchClause) guards.push('inside a catch block');
+    } else if (ts.isIfStatement(parent) && child !== parent.expression) guards.push('under an if');
+    else if (ts.isConditionalExpression(parent) && child !== parent.condition) guards.push('under a ternary');
+    else if (ts.isBinaryExpression(parent) && child === parent.right && LOGICAL.has(parent.operatorToken.kind))
+      guards.push(`under ${ts.tokenToString(parent.operatorToken.kind) ?? 'a logical operator'}`);
+    else if ((ts.isCaseClause(parent) && child !== parent.expression) || ts.isDefaultClause(parent))
+      guards.push('under a switch case');
+    else if (
+      ts.isPropertyAccessExpression(parent) &&
+      child === parent.expression &&
+      parent.name.text === 'catch' &&
+      ts.isCallExpression(parent.parent) &&
+      parent.parent.expression === parent
+    )
+      guards.push('inside .catch()');
+    const statements = statementsOf(parent);
+    const at = statements?.indexOf(child as ts.Statement) ?? -1;
+    // A function declaration is hoisted, so a return before it doesn't make it unreachable.
+    if (statements && at > 0 && !ts.isFunctionDeclaration(child)) {
+      const exit = statements
+        .slice(0, at)
+        .map((s) => EXITS[s.kind])
+        .find((e) => e !== undefined);
+      if (exit) guards.push(`unreachable after ${exit}`);
     }
   }
-  const last = args.slice(start).trim();
-  if (last) out.push(last);
-  return out;
+  return guards;
 }
 
-export function assertions(src: string): Assertion[] {
-  const s = normalize(src);
-  const found: Assertion[] = [];
-  const start = /\b(expect(?:\.soft|\.poll)?|expectRefused)\s*\(/g;
-  let end = 0;
-  for (let m = start.exec(s); m; m = start.exec(s)) {
-    if (m.index < end) continue; // nested in the previous assertion
-    const open = m.index + m[0].length - 1;
-    const callEnd = close(s, open);
-    const args = split(s.slice(open + 1, callEnd - 1));
-    if (m[1] === 'expectRefused') {
-      end = callEnd;
-      found.push({
-        text: s.slice(m.index, callEnd),
-        subject: args[0] ?? '',
-        message: '',
-        not: false,
-        matcher: 'expectRefused',
-        expected: args.slice(1).join(', '),
-      });
-      continue;
-    }
-    const chain = /^((?:\s*\.\s*(?:not|resolves|rejects))*)\s*\.\s*(\w+)\s*\(/.exec(s.slice(callEnd));
-    if (!chain) {
-      end = callEnd;
-      continue;
-    }
-    const mOpen = callEnd + chain[0].length - 1;
-    end = close(s, mOpen);
-    found.push({
-      text: s.slice(m.index, end),
-      subject: args[0] ?? '',
-      message: args[1] ?? '',
-      not: /\bnot\b/.test(chain[1] ?? ''),
-      matcher: chain[2] ?? '',
-      expected: s.slice(mOpen + 1, end - 1).trim(),
-    });
+const CHAIN = new Set(['not', 'resolves', 'rejects']);
+
+/** `expect(…)`, `expect.soft(…)` or `expect.poll(…)`: the call an assertion chain starts from. */
+const isExpect = (callee: ts.Expression) =>
+  (ts.isIdentifier(callee) && callee.text === 'expect') ||
+  (ts.isPropertyAccessExpression(callee) &&
+    ts.isIdentifier(callee.expression) &&
+    callee.expression.text === 'expect' &&
+    (callee.name.text === 'soft' || callee.name.text === 'poll'));
+
+/** The assertion a call makes: `expect(x, 'msg').not.toBe(y)` or `expectRefused(call, status, code)`. */
+function assertionAt(s: Source, call: ts.CallExpression): Assertion | undefined {
+  const callee = call.expression;
+  if (ts.isIdentifier(callee) && callee.text === 'expectRefused') {
+    const [subject, ...expected] = call.arguments;
+    return {
+      text: textOf(s, call),
+      subject: subject ? textOf(s, subject) : '',
+      message: '',
+      not: false,
+      matcher: 'expectRefused',
+      expected: expected.map((a) => textOf(s, a)).join(', '),
+      guards: guardsOf(call),
+    };
   }
+  if (!ts.isPropertyAccessExpression(callee)) return undefined;
+  let target = callee.expression;
+  let not = false;
+  while (ts.isPropertyAccessExpression(target) && CHAIN.has(target.name.text)) {
+    not ||= target.name.text === 'not';
+    target = target.expression;
+  }
+  if (!ts.isCallExpression(target) || !isExpect(target.expression)) return undefined;
+  const [subject, message] = target.arguments;
+  return {
+    text: textOf(s, call),
+    subject: subject ? textOf(s, subject) : '',
+    message: message ? textOf(s, message) : '',
+    not,
+    matcher: callee.name.text,
+    expected: oneLine(s.code.slice(call.arguments.pos, call.arguments.end)),
+    guards: guardsOf(call),
+  };
+}
+
+/** Every assertion in a file, read from its syntax tree, in source order. */
+export function assertions(src: string): Assertion[] {
+  const s = source(src);
+  const found: Assertion[] = [];
+  const visit = (node: ts.Node): void => {
+    const assertion = ts.isCallExpression(node) ? assertionAt(s, node) : undefined;
+    // An expect nested in another one (inside a toPass() block) is part of it.
+    if (assertion) found.push(assertion);
+    else ts.forEachChild(node, visit);
+  };
+  visit(s.file);
   return found;
 }
 
+const isText = (node: ts.Node) =>
+  ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node);
+
+const TEST_MODIFIERS = new Set(['only', 'skip', 'fixme', 'fail', 'slow']);
+
+/** `test(…)` or `test.only / skip / fixme / fail / slow(…)`: a call that declares a test. */
+const declaresTest = (callee: ts.Expression) =>
+  (ts.isIdentifier(callee) && callee.text === 'test') ||
+  (ts.isPropertyAccessExpression(callee) &&
+    ts.isIdentifier(callee.expression) &&
+    callee.expression.text === 'test' &&
+    TEST_MODIFIERS.has(callee.name.text));
+
 /** Titles of the tests a file declares (`test('…'`, `test.skip('…'`), not steps. */
 export function testTitles(src: string): string[] {
-  const s = normalize(src);
-  return [...s.matchAll(/\btest(?:\.(?:only|skip|fixme|fail|slow))?\s*\(\s*(['"`])((?:\\.|(?!\1).)*)\1/g)].map(
-    (m) => m[2] ?? '',
-  );
+  const s = source(src);
+  const titles: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node) && declaresTest(node.expression)) {
+      const [title] = node.arguments;
+      if (title && isText(title)) titles.push(textOf(s, title).slice(1, -1));
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(s.file);
+  return titles;
 }
 
 // ---- comparing ------------------------------------------------------------------------------------------
@@ -192,37 +322,44 @@ function take<T>(xs: T[], match: (x: T) => boolean): T | undefined {
   return i < 0 ? undefined : xs.splice(i, 1)[0];
 }
 
+const check = (x: Assertion) => `${x.not ? 'not.' : ''}${x.matcher}(${x.expected})`;
+
 function compareAssertions(file: string, before: Assertion[], after: Assertion[]): Omit<Finding, 'allowed'>[] {
   const out: Omit<Finding, 'allowed'>[] = [];
   const b = [...before];
   const a = [...after];
-  // 1. unchanged
-  for (const x of [...b]) if (take(a, (y) => y.text === x.text)) take(b, (y) => y === x);
+  /** Pairs an assertion with its new version; one that now sits under a guard it didn't have proves less. */
+  const pair = (x: Assertion, match: (y: Assertion) => boolean): Assertion | undefined => {
+    const y = take(a, match);
+    if (!y) return undefined;
+    take(b, (z) => z === x);
+    const guards = added(x.guards, y.guards);
+    if (guards.length)
+      out.push({ file, kind: 'weakened', detail: `${y.subject}: ${check(y)} is now ${guards.join(', ')}` });
+    return y;
+  };
+  // 1. unchanged, first where it was, then anywhere
+  for (const x of [...b]) pair(x, (y) => y.text === x.text && y.guards.join() === x.guards.join());
+  for (const x of [...b]) pair(x, (y) => y.text === x.text);
   // 2. same check, only the message or the subject's name changed
   for (const x of [...b]) {
-    const y = take(
-      a,
+    const y = pair(
+      x,
       (z) =>
         z.matcher === x.matcher &&
         z.not === x.not &&
         z.expected === x.expected &&
         (z.subject === x.subject || z.message === x.message),
     );
-    if (!y) continue;
-    take(b, (z) => z === x);
-    if (y.subject !== x.subject)
+    if (y && y.subject !== x.subject)
       out.push({ file, kind: 'maintenance', detail: `subject renamed: ${x.subject} → ${y.subject}` });
   }
   // 3. same subject, the check itself changed
   for (const x of [...b]) {
-    const y = take(a, (z) => z.subject === x.subject) ?? take(a, (z) => z.message !== '' && z.message === x.message);
+    const y = pair(x, (z) => z.subject === x.subject) ?? pair(x, (z) => z.message !== '' && z.message === x.message);
     if (!y) continue;
-    take(b, (z) => z === x);
-    const was = `${x.not ? 'not.' : ''}${x.matcher}(${x.expected})`;
-    const now = `${y.not ? 'not.' : ''}${y.matcher}(${y.expected})`;
-    if (strength(y.matcher) < strength(x.matcher))
-      out.push({ file, kind: 'weakened', detail: `${x.subject}: ${was} → ${now}` });
-    else out.push({ file, kind: 'expected', detail: `${x.subject}: ${was} → ${now}` });
+    const detail = `${x.subject}: ${check(x)} → ${check(y)}`;
+    out.push({ file, kind: strength(y.matcher) < strength(x.matcher) ? 'weakened' : 'expected', detail });
   }
   for (const x of b) out.push({ file, kind: 'removed', detail: `assertion: ${x.text.slice(0, 140)}` });
   return out;
@@ -269,6 +406,25 @@ function unpinnedFails(src: string, openDefects: ReadonlySet<string>): string[] 
     });
 }
 
+const isTestFail = (callee: ts.Expression) =>
+  ts.isPropertyAccessExpression(callee) &&
+  ts.isIdentifier(callee.expression) &&
+  callee.expression.text === 'test' &&
+  callee.name.text === 'fail';
+
+/** A call whose first argument is a title: test(…), test.describe(…), describe(…), test.step(…) and their modifiers. */
+function titled(callee: ts.Expression): boolean {
+  if (ts.isPropertyAccessExpression(callee) && callee.name.text === 'step') return true;
+  let root = callee;
+  while (ts.isPropertyAccessExpression(root)) root = root.expression;
+  return ts.isIdentifier(root) && ['test', 'describe', 'step'].includes(root.text);
+}
+
+const isTag = (node: ts.Node) =>
+  ts.isPropertyAssignment(node) &&
+  (ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)) &&
+  node.name.text === 'tag';
+
 /**
  * Test data a file states outside its assertions, titles, tags and imports: string and number literals in specs
  * (`priceCents: 2500`, `setQuantity(name, 11)`, `'WELCOME10'`), numbers in seed / recipe / card defaults. Changing
@@ -277,17 +433,37 @@ function unpinnedFails(src: string, openDefects: ReadonlySet<string>): string[] 
 export function dataLiterals(path: string, src: string): string[] {
   const spec = path.startsWith('tests/');
   if (!spec && !/^framework\/(setup\/(seed|recipes)\.ts|data\/)/.test(path)) return [];
-  let s = normalize(src);
-  for (const a of assertions(src)) s = s.replace(a.text, ' ');
-  s = s
-    .replace(/\bimport\s[^;]*;/g, ' ')
-    .replace(/\btest\.fail\s*\([^)]*\)/g, ' ')
-    .replace(/\btag\s*:\s*(?:\[[^\]]*\]|'[^']*'|"[^"]*")/g, ' ')
-    .replace(/\b(test(?:\.\w+)?|describe|step)\s*\(\s*(['"`])(?:\\.|(?!\2).)*\2/g, '$1(');
-  const strings = spec ? [...s.matchAll(/(['"`])(?:\\.|(?!\1).)*\1/g)].map((m) => m[0]) : [];
-  const numbers = [...s.replace(/(['"`])(?:\\.|(?!\1).)*\1/g, ' ').matchAll(/(?<![\w$.])\d[\d_]*(?:\.\d+)?/g)].map(
-    (m) => m[0],
-  );
+  const s = source(src);
+  const strings: string[] = [];
+  const numbers: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isImportDeclaration(node) || isTag(node)) return;
+    if (isText(node)) {
+      if (spec) strings.push(textOf(s, node));
+      return;
+    }
+    if (ts.isNumericLiteral(node)) {
+      numbers.push(textOf(s, node));
+      return;
+    }
+    if (ts.isCallExpression(node)) {
+      // Assertions are compared on their own; test.fail(…) pins a defect, only a test body inside it is data.
+      if (assertionAt(s, node)) return;
+      if (isTestFail(node.expression)) {
+        for (const arg of node.arguments) if (ts.isArrowFunction(arg) || ts.isFunctionExpression(arg)) visit(arg);
+        return;
+      }
+      // A test, describe or step title is not data.
+      if (titled(node.expression)) {
+        node.arguments.forEach((arg, i) => {
+          if (i > 0 || !isText(arg)) visit(arg);
+        });
+        return;
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(s.file);
   return [...strings, ...numbers];
 }
 

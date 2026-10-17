@@ -26,8 +26,9 @@ The agents call these engines instead of deciding by feel. All of them are unit-
   steps; a failure names its defect); the latest result per case feeds traceability and the gate.
 - **Flakiness** (`qa:flaky`). From a `--repeat-each` run without retries: failure rate per test and project, stable /
   flaky / broken.
-- **Heal guard** (`qa:heal-guard`). Reads every assertion before and after a change: its subject, message, matcher
-  strength and expected value. Anything that would turn a red test green without documented intent is blocked
+- **Heal guard** (`qa:heal-guard`). Parses every assertion before and after a change: its subject, message, matcher
+  strength, expected value and whether a try/catch, a condition or an early return now guards it. Anything that would
+  turn a red test green without documented intent is blocked
   ([details](framework.md#failure-triage-and-the-heal-guard)).
 - **Knowledge guard** (`qa:knowledge-guard`). Every vault change in a diff must be one the knowledge MCP made and
   the ledger records ([details](knowledge.md#self-improving-knowledge)).
