@@ -183,6 +183,12 @@ class TestCommit:
         assert ev.doc_id in (sandbox / "golden.learned.yaml").read_text(encoding="utf-8")
         assert '"decision": "accepted"' in (sandbox / "_curation" / "ledger.jsonl").read_text(encoding="utf-8")
 
+    def test_learned_probes_are_written_the_way_prettier_formats_yaml(self, docs: list[Document], sandbox: Path) -> None:
+        # CI runs `prettier --check` on rag/: an accepted lesson must not fail the agent's pull request.
+        curate.add_probe("Which order do open, state-load and goto go in?", "LRN-X", "PROP-20261017-aaaaaa")
+        text = (sandbox / "golden.learned.yaml").read_text(encoding="utf-8")
+        assert "  expected:\n    - LRN-X\n" in text, text
+
     def test_the_ledger_sha_is_the_sha_of_the_file_written(self, docs: list[Document], sandbox: Path) -> None:
         # qa/knowledge-guard.ts matches a vault file in an agent's patch to the decision that accepted it.
         raw = proposal()

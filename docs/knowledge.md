@@ -22,15 +22,15 @@ rules, work-item cards, defects, manual test cases, review learnings and the gen
 
 | Set                                   | Used for                                           | Questions |
 | ------------------------------------- | -------------------------------------------------- | --------- |
-| `golden.yaml` + `golden.learned.yaml` | the ranking priors were tuned here; learned probes | 27        |
+| `golden.yaml` + `golden.learned.yaml` | the ranking priors were tuned here; learned probes | 28        |
 | `golden.dev.yaml`                     | choosing the next ranking change                   | 24        |
 | `golden.holdout.yaml`                 | never tuned or chosen on — the honest number       | 59        |
 
 | Mode   | Golden: hit@1 · hit@5 · MRR | Dev: hit@1 · hit@5 · MRR  | Held out: hit@1 · hit@5 · MRR |
 | ------ | --------------------------- | ------------------------- | ----------------------------- |
-| vector | 0.630 · 1.0 · 0.767         | **0.792** · 0.917 · 0.831 | 0.746 · 0.983 · **0.849**     |
-| graph  | 0.370 · 0.593 · 0.481       | 0.417 · 0.667 · 0.521     | 0.322 · 0.576 · 0.426         |
-| hybrid | **0.741 · 1.0 · 0.864**     | 0.750 · **0.958 · 0.847** | 0.746 · 0.983 · 0.845         |
+| vector | 0.643 · 1.0 · 0.775         | **0.792** · 0.917 · 0.831 | 0.746 · 0.983 · **0.849**     |
+| graph  | 0.357 · 0.571 · 0.464       | 0.417 · 0.667 · 0.521     | 0.322 · 0.576 · 0.426         |
+| hybrid | **0.714 · 1.0 · 0.851**     | 0.750 · **0.958 · 0.847** | 0.746 · 0.983 · 0.845         |
 
 On questions it was never tuned on, hybrid ties vector-only. Its ranking edge is in-sample; the graph earns its
 place in `related()` walks (a feature → its rules, code, specs, defects) and id lookups rather than in the ranking.
