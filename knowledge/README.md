@@ -29,8 +29,10 @@ over MCP (`knowledge` server).
   `rejected` with a `resolution` (`not-a-bug`, `duplicate`, `cannot-reproduce`, `wont-fix`). Anything not
   closed or rejected counts as open for the release gate. Each change adds a line under `## History`.
 - **Test case** `status`: `draft` (written from rules, not yet walked) → `ready` (walked in the app) →
-  `obsolete`. `automated_by` names the spec › title, or `none`. `setup` names the recipe that arranges its
-  preconditions (`bun run qa:arrange --case <id>`); `bun run qa:arrange --check` fails CI on a missing or invalid one.
+  `outdated` (the app changed in a documented way; the case waits for its update) → `deprecated` (retired: kept as
+  history, never run, counted or retrieved). `automated_by` names the spec › title, or `none`. `setup` names the
+  recipe that arranges its preconditions (`bun run qa:arrange --case <id>`); `bun run qa:arrange --check` fails CI on
+  a missing or invalid one.
 - **Learning** `confidence`: `provisional` (an agent saw it once) → `established` (human evidence, or a
   second independent source — `support` counts them). `status: deprecated` keeps it as history, unretrieved.
 

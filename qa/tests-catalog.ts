@@ -73,6 +73,18 @@ export function listTests(projects: string[] = ['api', 'chromium']): TestRecord[
   return flatten(JSON.parse(run.stdout.slice(start)) as PlaywrightJson);
 }
 
+/**
+ * The suite as a run saw it: each test that ran with its result, every other test as the catalog lists it. The
+ * catalog alone can't tell a passing test from a runtime `test.fail()` pin or a runtime skip (`--list` executes
+ * nothing), so coverage is judged on this instead.
+ */
+export function withResults(catalog: TestRecord[], results: TestRecord[]): TestRecord[] {
+  const key = (t: TestRecord): string => `${t.id}/${t.project}`;
+  const ran = new Map(results.map((t) => [key(t), t]));
+  const listed = new Set(catalog.map(key));
+  return [...catalog.map((t) => ran.get(key(t)) ?? t), ...[...ran.values()].filter((t) => !listed.has(key(t)))];
+}
+
 /** Feature (FEAT-*), rule (BR-*) and defect (DEF-*) ids a test is tagged with. */
 export function traceTags(t: TestRecord): string[] {
   return t.tags.filter((tag) => /^(FEAT|BR|DEF)-/.test(tag));

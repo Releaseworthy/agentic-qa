@@ -11,7 +11,7 @@
 import { parseArgs } from 'node:util';
 import { latestResults, manualVerdict, readRuns, type ManualResult, type ManualResultKind } from '@qa/manual-runs';
 import { table, writeReport } from '@qa/report';
-import { listTests, readResults, traceTags, type TestRecord } from '@qa/tests-catalog';
+import { listTests, readResults, traceTags, withResults, type TestRecord } from '@qa/tests-catalog';
 import { isOpen, SEVERITY_RANK, Vault, type Severity } from '@qa/vault';
 
 export type TraceRow = {
@@ -23,6 +23,8 @@ export type TraceRow = {
   tests: number;
   passing: number;
   failing: number;
+  /** Tests the catalog lists that this run didn't select. */
+  notRun: number;
   manual: string[];
   /** Latest manual execution of those cases. */
   manualResult: ManualResultKind | 'not run';
@@ -48,6 +50,7 @@ export function trace(vault: Vault, tests: TestRecord[], manualResults: ManualRe
     const ts = testsFor(id);
     const failing = ts.filter((t) => t.status === 'unexpected').length;
     const passing = ts.filter((t) => t.status === 'expected' || t.status === 'flaky').length;
+    const notRun = ts.filter((t) => t.status === 'listed').length;
     const covers = vault.testCases.filter((m) => m.feature === id || m.covers.includes(id)).map((m) => m.id);
     const manualResult = manualVerdict(covers, manualResults);
     const defects = vault.defects.filter((d) => isOpen(d) && (d.feature === id || d.rule === id)).map((d) => d.id);
@@ -59,6 +62,7 @@ export function trace(vault: Vault, tests: TestRecord[], manualResults: ManualRe
       tests: ts.length,
       passing,
       failing,
+      notRun,
       manual: covers,
       manualResult,
       defects,
@@ -94,7 +98,7 @@ export function toMarkdown(t: Traceability, fromRun: boolean): string {
     `${icon[r.status]} ${r.id}`,
     r.title,
     r.weight,
-    fromRun ? `${r.passing}/${r.tests}` : r.tests,
+    fromRun ? `${r.passing}/${r.tests - r.notRun}${r.notRun ? ` (+${r.notRun} not run)` : ''}` : r.tests,
     r.manual.length ? `${r.manual.join(', ')} (${r.manualResult})` : '—',
     r.defects.join(', ') || '—',
   ]);
@@ -120,7 +124,10 @@ if (import.meta.main) {
     args: Bun.argv.slice(2),
     options: { results: { type: 'string' }, manual: { type: 'string' } },
   });
-  const tests = values.results ? readResults(values.results) : listTests();
+  // From a run: its results over the whole catalog, so tests an impact-selected run skipped still count as coverage.
+  const results = values.results ? readResults(values.results) : undefined;
+  const projects = [...new Set((results ?? []).map((t) => t.project))];
+  const tests = results ? withResults(listTests(projects.length ? projects : undefined), results) : listTests();
   const result = trace(new Vault(), tests, latestResults(readRuns(values.manual)));
   const md = toMarkdown(result, Boolean(values.results));
   writeReport('traceability', result, md);

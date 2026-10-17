@@ -56,10 +56,20 @@ describe('analyzeImpact', () => {
     expect(r.grep).toBe('');
   });
 
-  it('selects nothing for docs and tooling', () => {
-    const r = run(['README.md', '.claude/skills/x/SKILL.md', 'rag/hybrid.py']);
+  it('selects nothing for docs and tooling, and calls none of it unmapped', () => {
+    const r = run([
+      'README.md',
+      '.claude/skills/x/SKILL.md',
+      'rag/hybrid.py',
+      'knowledge/_curation/ledger.jsonl',
+      'scripts/site-index.ts',
+      '.mcp.json',
+      'azure-pipelines.yml',
+      'docker-compose.yml',
+    ]);
     expect(r.tests.selected).toBe(0);
     expect(r.full).toBe(false);
+    expect(r.unmapped, 'nothing here needs a feature card').toEqual([]);
   });
 
   it('runs everything for product code no feature maps, and reports it', () => {

@@ -1,6 +1,6 @@
 ## Seeded-defect detection (api)
 
-**4 of 4 defects caught.**
+**4 of 4 defects caught.** Baseline without defects: 86 of 86 tests green.
 
 | Defect | Breaks | Verdict | Caught by | Other failures |
 | --- | --- | --- | --- | --- |

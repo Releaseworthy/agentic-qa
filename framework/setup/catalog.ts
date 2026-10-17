@@ -133,7 +133,7 @@ export function renderCatalog(): string {
 export function checkCases(cases: TestCase[], body: (tc: TestCase) => string): string[] {
   const problems: string[] = [];
   for (const tc of cases) {
-    if (tc.meta.status === 'obsolete') continue;
+    if (tc.status === 'deprecated') continue;
     if (!tc.setup) {
       problems.push(`${tc.id}: no \`setup\` — name the recipe that arranges its preconditions`);
       continue;

@@ -29,6 +29,7 @@
     "qa:flaky": "bun run qa/flaky.ts",
     "qa:arrange": "bun run framework/setup/arrange-cli.ts",
     "qa:heal-guard": "bun run qa/heal-guard.ts",
+    "qa:knowledge-guard": "bun run qa/knowledge-guard.ts",
     "qa:pr-feedback": "bun run qa/pr-feedback.ts",
     "qa:vault": "bun run qa/vault-check.ts",
     "codesearch": "bun run codesearch/cli.ts",

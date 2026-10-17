@@ -4,10 +4,11 @@
  *   bun run qa:defects                 every defect in app/defects.ts, API project
  *   bun run qa:defects --project=chromium --only=free-shipping-boundary
  *
- * For each defect: start ShopLite with only that defect on (its own port), run
- * the whole project against it, and require at least one failing test tagged
- * with the business rule the defect breaks. "killed" = caught, "survived" = the
- * suite would ship that bug. Exits 1 when any defect survives.
+ * First a baseline: the project runs once against ShopLite with no defect on. Then, for each defect, ShopLite starts
+ * with only that defect on (its own port) and the project runs again. A defect is "killed" when a test tagged with the
+ * business rule it breaks passed on the baseline and fails now; "survived" means the suite would ship that bug. A
+ * test that already fails on the clean build proves nothing, so it never counts as a catch. Exits 1 when any defect
+ * survives.
  */
 
 import { spawn, spawnSync } from 'node:child_process';
@@ -16,7 +17,7 @@ import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { DEFECTS, type DefectId } from '@app/defects';
 import { table, writeReport } from '@qa/report';
-import { readResults } from '@qa/tests-catalog';
+import { readResults, type TestRecord } from '@qa/tests-catalog';
 import { ROOT } from '@qa/vault';
 import { stopwatch, toMs } from '@utils/date';
 
@@ -27,6 +28,9 @@ type Outcome = {
   caughtBy: string[];
   otherFailures: number;
 };
+
+const key = (t: TestRecord): string => `${t.id}/${t.project}`;
+const where = (t: TestRecord): string => `${t.file} › ${t.title}`;
 
 async function waitForHealth(url: string, ms = toMs({ seconds: 20 })): Promise<void> {
   const elapsed = stopwatch();
@@ -41,16 +45,17 @@ async function waitForHealth(url: string, ms = toMs({ seconds: 20 })): Promise<v
   throw new Error(`server did not start: ${url}`);
 }
 
-async function runAgainst(defect: DefectId, port: number, project: string): Promise<Outcome> {
+/** Runs `project` against a ShopLite of its own with `defects` on ('none' for the clean build). */
+async function runSuite(defects: string, port: number, project: string, label: string): Promise<TestRecord[]> {
   // The dev environment's build (test hooks, saved accounts) on a port of its own.
   const server = spawn(process.execPath, ['run', 'framework/setup/app-server.ts'], {
     cwd: ROOT,
-    env: { ...process.env, TEST_ENV: 'dev', PORT: String(port), SHOPLITE_DEFECTS: defect },
+    env: { ...process.env, TEST_ENV: 'dev', PORT: String(port), SHOPLITE_DEFECTS: defects },
     stdio: 'ignore',
   });
   try {
     await waitForHealth(`http://localhost:${port}/health`);
-    const out = join(ROOT, 'out', 'defect-detection', `${defect}.json`);
+    const out = join(ROOT, 'out', 'defect-detection', `${label}.json`);
     mkdirSync(join(ROOT, 'out', 'defect-detection'), { recursive: true });
     spawnSync(
       process.execPath,
@@ -63,25 +68,31 @@ async function runAgainst(defect: DefectId, port: number, project: string): Prom
           BASE_URL: `http://localhost:${port}`,
           START_APP: 'false',
           PLAYWRIGHT_JSON_OUTPUT_FILE: out,
-          SHOPLITE_DEFECTS: defect,
+          SHOPLITE_DEFECTS: defects,
           CI: '',
         },
         stdio: ['ignore', 'ignore', 'inherit'],
       },
     );
-    const failures = readResults(out).filter((t) => t.status === 'unexpected');
-    const rule = DEFECTS[defect];
-    const caughtBy = failures.filter((t) => t.tags.includes(rule)).map((t) => `${t.file} › ${t.title}`);
-    return {
-      defect,
-      rule,
-      verdict: caughtBy.length ? 'killed' : 'survived',
-      caughtBy,
-      otherFailures: failures.length - caughtBy.length,
-    };
+    return readResults(out);
   } finally {
     server.kill();
   }
+}
+
+/** Which tests the defect turned red: tagged with its rule, green on the clean build, failing now. */
+export function judge(defect: DefectId, baseline: TestRecord[], results: TestRecord[]): Outcome {
+  const green = new Set(baseline.filter((t) => t.status === 'expected').map(key));
+  const failures = results.filter((t) => t.status === 'unexpected');
+  const rule = DEFECTS[defect];
+  const caughtBy = failures.filter((t) => t.tags.includes(rule) && green.has(key(t))).map(where);
+  return {
+    defect,
+    rule,
+    verdict: caughtBy.length ? 'killed' : 'survived',
+    caughtBy,
+    otherFailures: failures.length - caughtBy.length,
+  };
 }
 
 if (import.meta.main) {
@@ -90,18 +101,22 @@ if (import.meta.main) {
     options: { project: { type: 'string', default: 'api' }, only: { type: 'string' } },
   });
   const ids = (values.only ? values.only.split(',') : Object.keys(DEFECTS)) as DefectId[];
-  const outcomes: Outcome[] = [];
+  for (const id of ids) if (!(id in DEFECTS)) throw new Error(`unknown defect ${id}`);
   let port = 3400; // clear of the dev/staging/live stand-ins on 3100–3300
+  console.error('▶ baseline (no defect) …');
+  const baseline = await runSuite('none', port++, values.project, 'baseline');
+  const baselineFailures = baseline.filter((t) => t.status === 'unexpected');
+  const outcomes: Outcome[] = [];
   for (const id of ids) {
-    if (!(id in DEFECTS)) throw new Error(`unknown defect ${id}`);
     console.error(`▶ ${id} (${DEFECTS[id]}) …`);
-    outcomes.push(await runAgainst(id, port++, values.project));
+    outcomes.push(judge(id, baseline, await runSuite(id, port++, values.project, id)));
   }
   const killed = outcomes.filter((o) => o.verdict === 'killed').length;
   const md = [
     `## Seeded-defect detection (${values.project})`,
     '',
-    `**${killed} of ${outcomes.length} defects caught.**`,
+    `**${killed} of ${outcomes.length} defects caught.** Baseline without defects: ` +
+      `${baseline.length - baselineFailures.length} of ${baseline.length} tests green.`,
     '',
     table(
       ['Defect', 'Breaks', 'Verdict', 'Caught by', 'Other failures'],
@@ -113,8 +128,15 @@ if (import.meta.main) {
         o.otherFailures,
       ]),
     ),
+    ...(baselineFailures.length
+      ? ['', `⚠️ Red on the clean build, so they can't count as catches: ${baselineFailures.map(where).join(' · ')}`]
+      : []),
   ].join('\n');
-  writeReport('defect-detection', outcomes, md);
+  writeReport(
+    'defect-detection',
+    { baseline: { tests: baseline.length, failing: baselineFailures.map(where) }, outcomes },
+    md,
+  );
   console.log(md);
   if (killed < outcomes.length) process.exit(1);
 }

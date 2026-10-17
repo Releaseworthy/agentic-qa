@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -181,6 +182,18 @@ class TestCommit:
         assert out.decision == "accepted" and out.write and out.write[0].endswith(f"{ev.doc_id}.md")
         assert ev.doc_id in (sandbox / "golden.learned.yaml").read_text(encoding="utf-8")
         assert '"decision": "accepted"' in (sandbox / "_curation" / "ledger.jsonl").read_text(encoding="utf-8")
+
+    def test_the_ledger_sha_is_the_sha_of_the_file_written(self, docs: list[Document], sandbox: Path) -> None:
+        # qa/knowledge-guard.ts matches a vault file in an agent's patch to the decision that accepted it.
+        raw = proposal()
+        ev, _, _ = curate.evaluate(raw, docs, TODAY)
+        curate.save_pending(ev, raw)
+        out = curate.decide(ev.proposal_id, "accept", SCORES, "grounded in review", "test")
+        assert out.write is not None
+        content = out.write[1]
+        assert content.endswith("\n") and "\r" not in content
+        assert out.ledger["sha"] == hashlib.sha256(content.encode("utf-8")).hexdigest()[:12]
+        assert curate.content_sha(content.replace("\n", "\r\n")) == out.ledger["sha"], "CRLF does not change the sha"
 
     def test_an_accept_below_the_bar_is_recorded_as_rejected(self, docs: list[Document], sandbox: Path) -> None:
         raw = proposal()

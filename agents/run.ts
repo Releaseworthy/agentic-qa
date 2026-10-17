@@ -22,7 +22,7 @@
  * authoring and review.
  */
 
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { query, type Options, type SDKMessage, type SDKResultMessage } from '@anthropic-ai/claude-agent-sdk';
@@ -33,11 +33,16 @@ import { z } from 'zod';
 const ROOT = join(import.meta.dir, '..');
 
 /**
- * Pre-approved tools; anything else is denied. The project's PreToolUse hook (.claude/settings.json →
- * agents/tool-policy.ts) narrows them further: knowledge writes by role, a read-only gh, no pushes, no network
- * beyond localhost. Agents write and run code (specs, repro scripts), so this is not a sandbox — CI runs the agent
- * with a read-only GitHub token and opens the PR in a separate job.
+ * Pre-approved tools; anything else is denied. The shell commands are the project's own allow list
+ * (.claude/settings.json), so interactive and headless sessions pre-approve the same ones. The project's PreToolUse
+ * hook (agents/tool-policy.ts) narrows them further: knowledge writes by role, the vault only through the knowledge
+ * MCP, a read-only gh, no pushes, no network beyond localhost, and — in a headless run — file writes only under
+ * tests/, framework/ and out/. Agents write and run code (specs, repro scripts), so this is not a sandbox: CI runs
+ * the agent with a read-only GitHub token and opens the PR in a separate job.
  */
+const settings = JSON.parse(readFileSync(join(ROOT, '.claude', 'settings.json'), 'utf8')) as {
+  permissions?: { allow?: string[] };
+};
 const ALLOWED_TOOLS = [
   'Read',
   'Write',
@@ -48,32 +53,7 @@ const ALLOWED_TOOLS = [
   'Task',
   'Skill',
   'TodoWrite',
-  'mcp__knowledge',
-  'mcp__codesearch',
-  'Bash(bun run *)',
-  'Bash(bun test *)',
-  'Bash(bunx playwright test *)',
-  'Bash(bunx playwright-cli *)',
-  'Bash(uv run *)',
-  'Bash(git diff *)',
-  'Bash(git status *)',
-  'Bash(git log *)',
-  'Bash(TEST_ENV=* bunx playwright test *)',
-  'Bash(TEST_ENV=* bun run *)',
-  'Bash(git show *)',
-  'Bash(gh pr view *)',
-  'Bash(gh pr diff *)',
-  'Bash(gh api *)',
-  // Read-only helpers agents chain onto the commands above (pipes are checked per command).
-  'Bash(cd *)',
-  'Bash(grep *)',
-  'Bash(tail *)',
-  'Bash(head *)',
-  'Bash(cat *)',
-  'Bash(ls *)',
-  'Bash(wc *)',
-  'Bash(echo *)',
-  'Bash(sort *)',
+  ...(settings.permissions?.allow ?? []),
 ];
 
 // The runner's own flags; every other argument (positional or `--flag`) belongs to the workflow.
@@ -104,6 +84,15 @@ const { values } = parseArgs({
   },
 });
 
+/** A cap given on the command line, or the workflow's default. A typo ("$5") must not turn the cap off. */
+function cap(flag: string, raw: string | undefined, schema: z.ZodType<number>, fallback: number): number {
+  if (raw === undefined || raw.trim() === '') return fallback;
+  const parsed = schema.safeParse(raw.trim());
+  if (parsed.success) return parsed.data;
+  console.error(`${flag} "${raw}" is not valid: ${z.prettifyError(parsed.error)}`);
+  process.exit(2);
+}
+
 const [name, ...rest] = workflowArgs.map((a) => (/\s/.test(a) ? JSON.stringify(a) : a));
 if (!name || name === 'list' || !(name in WORKFLOWS)) {
   console.log('Workflows:');
@@ -112,6 +101,8 @@ if (!name || name === 'list' || !(name in WORKFLOWS)) {
 }
 
 const workflow = WORKFLOWS[name as WorkflowName];
+const maxTurns = cap('--max-turns', values['max-turns'], z.coerce.number().int().positive(), workflow.maxTurns);
+const maxBudgetUsd = cap('--budget', values.budget, z.coerce.number().positive(), workflow.budgetUsd);
 const runId = `${formatDate(now(), DateFormat.RUN_ID)}-${name}`;
 const dir = join(ROOT, 'out', 'agent-runs', runId);
 mkdirSync(dir, { recursive: true });
@@ -122,10 +113,12 @@ const options: Options = {
   // CLAUDE.md, .claude/skills, .claude/agents and .claude/settings.json (with the tool-policy hook) from the repo —
   // not the machine's user settings.
   settingSources: ['project'],
+  // Marks the session as headless for the tool-policy hook: file writes only under tests/, framework/ and out/.
+  env: { ...process.env, AGENTIC_QA_RUN: runId },
   model: values.model,
   fallbackModel: 'sonnet',
-  maxTurns: Number(values['max-turns'] ?? workflow.maxTurns),
-  maxBudgetUsd: Number(values.budget ?? workflow.budgetUsd),
+  maxTurns,
+  maxBudgetUsd,
   // Headless: anything not pre-approved is denied instead of waiting for a human.
   permissionMode: 'dontAsk',
   allowedTools: ALLOWED_TOOLS,
@@ -238,5 +231,6 @@ writeFileSync(join(dir, 'summary.md'), summary);
 if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${summary}\n`);
 console.log(`\n${summary}\n\nRun saved to out/agent-runs/${runId}/`);
 
-if (result.subtype !== 'success' || structured?.status === 'blocked') process.exit(1);
-if (values.strict && structured?.decision === 'NO-GO') process.exit(1);
+// CI acts on the structured result: a run that ended without one (or with a broken one) is a failed run.
+if (result.subtype !== 'success' || !structured || structured.status === 'blocked') process.exit(1);
+if (values.strict && structured.decision === 'NO-GO') process.exit(1);

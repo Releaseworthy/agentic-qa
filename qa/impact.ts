@@ -86,7 +86,13 @@ const NO_TEST_IMPACT = [
   /^pyproject\.toml$/,
   /^uv\.lock$/,
   /^tests\/unit\//,
-  /^knowledge\/(learnings|test-cases|cards|product)\//,
+  /^knowledge\/(learnings|test-cases|cards|product|_curation)\//,
+  /^scripts\//,
+  /^\.mcp\.json$/,
+  /^\.playwright\//,
+  /^\.azure\//,
+  /^azure-pipelines\.yml$/,
+  /^docker-compose\.yml$/,
 ];
 const HOP_WEIGHT = [1.0, 0.6, 0.4, 0.3];
 

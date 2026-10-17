@@ -32,19 +32,31 @@ import { CATALOG_PATH, checkCases, renderCatalog } from '@setup/catalog';
 import { RECIPES, arrange, isRecipe, testData, type RecipeId } from '@setup/recipes';
 import { toMs } from '@utils/date';
 
-async function healthy(): Promise<boolean> {
+/** ShopLite's /health answer, or undefined when nothing answers. */
+async function health(): Promise<{ env?: unknown } | undefined> {
   try {
-    return (await fetch(`${env.baseUrl}/health`)).ok;
+    const res = await fetch(`${env.baseUrl}/health`);
+    return res.ok ? ((await res.json()) as { env?: unknown }) : undefined;
   } catch {
-    return false;
+    return undefined;
   }
+}
+
+/** The app must answer as TEST_ENV — the check global setup makes — so a recipe never seeds another environment. */
+function assertEnvironment(answer: { env?: unknown }): void {
+  if (answer.env !== env.name)
+    throw new Error(`${env.baseUrl} answers as the "${String(answer.env)}" environment, not TEST_ENV=${env.name}`);
 }
 
 /** The background ShopLite this CLI started for TEST_ENV, so `--stop` can end it. */
 const PID_FILE = join(ROOT, 'out', 'sessions', `.app-${env.name}.pid`);
 
 async function ensureServer(): Promise<boolean> {
-  if (await healthy()) return false;
+  const running = await health();
+  if (running) {
+    assertEnvironment(running);
+    return false;
+  }
   if (!env.startApp)
     throw new Error(`${env.baseUrl} is not answering, and TEST_ENV=${env.name} does not start the app`);
   const child = spawn(process.execPath, ['run', 'framework/setup/app-server.ts'], {
@@ -57,8 +69,13 @@ async function ensureServer(): Promise<boolean> {
   child.unref();
   mkdirSync(dirname(PID_FILE), { recursive: true });
   writeFileSync(PID_FILE, String(child.pid));
-  for (let i = 0; i < 50 && !(await healthy()); i++) await Bun.sleep(toMs({ seconds: 0.2 }));
-  if (!(await healthy())) throw new Error(`ShopLite did not start at ${env.baseUrl}`);
+  let started = await health();
+  for (let i = 0; i < 50 && !started; i++) {
+    await Bun.sleep(toMs({ seconds: 0.2 }));
+    started = await health();
+  }
+  if (!started) throw new Error(`ShopLite did not start at ${env.baseUrl}`);
+  assertEnvironment(started);
   return true;
 }
 

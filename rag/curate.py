@@ -150,6 +150,17 @@ def learning_id(title: str) -> str:
     return "LRN-" + out
 
 
+def written(content: str) -> str:
+    """The file a write leaves: LF line endings and one trailing newline. The ledger's `sha` covers exactly this, so
+    qa/knowledge-guard.ts can prove a vault file in a patch is the one the gate and the judge accepted."""
+    text = content.replace("\r\n", "\n")
+    return text if text.endswith("\n") else text + "\n"
+
+
+def content_sha(content: str) -> str:
+    return hashlib.sha256(written(content).encode("utf-8")).hexdigest()[:12]
+
+
 def _dump(meta: dict[str, Any]) -> str:
     return yaml.safe_dump(meta, sort_keys=False, default_flow_style=None, allow_unicode=True, width=1000).strip()
 
@@ -473,11 +484,11 @@ def decide(proposal_id: str, verdict: Verdict, scores: dict[str, int], rationale
         "gate": {c["name"]: c["ok"] for c in ev["checks"]},
         "retrieval": {k: v for k, v in (ev.get("retrieval") or {}).items() if k != "per"},
         "judge": {"by": judge, "verdict": verdict, "scores": scores, "rationale": rationale},
-        "sha": hashlib.sha256(ev["preview"].encode()).hexdigest()[:12],
+        "sha": content_sha(ev["preview"]),
     }
     out = Outcome(decision, doc_id, reason, ledger=entry)
     if decision == "accepted":
-        out.write = (ev["path"], ev["preview"])
+        out.write = (ev["path"], written(ev["preview"]))
         if raw.get("kind") == "deprecate":
             remove_probes(doc_id)
         else:

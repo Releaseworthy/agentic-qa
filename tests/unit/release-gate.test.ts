@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { assess } from '@qa/release-gate';
+import { withResults } from '@qa/tests-catalog';
 import { doc, test, vault } from '@tests/unit/fakes';
 
 const green = [
@@ -68,6 +69,22 @@ describe('assess', () => {
       expect(assess(closed(), [...withoutPay, only]).findings, only.status).toContainEqual(
         expect.objectContaining({ level: 'blocker', what: expect.stringContaining('BR-PAY-01') }),
       );
+  });
+
+  it('judges coverage on what ran: the catalog shows a runtime test.fail pin as an ordinary test', () => {
+    const withoutPay = green.filter((t) => !t.tags.includes('BR-PAY-01'));
+    // `playwright test --list` executes nothing, so a pin's test.fail() is invisible there.
+    const listed = test({ id: 'pin', tags: ['FEAT-CHECKOUT', 'BR-PAY-01'], status: 'listed' });
+    const ran = { ...listed, status: 'expected' as const, expectedStatus: 'failed' };
+    const r = assess(closed(), [...withoutPay, ran], withResults([...withoutPay, listed], [...withoutPay, ran]));
+    expect(r.findings, 'BR-PAY-01 has only a pin').toContainEqual(
+      expect.objectContaining({ level: 'blocker', what: expect.stringContaining('BR-PAY-01') }),
+    );
+    const catalog = [...green.map((t) => ({ ...t, status: 'listed' as const })), listed];
+    expect(
+      withResults(catalog, withoutPay).filter((t) => t.status === 'listed'),
+      'the BR-PAY-01 test and the pin, which this run did not select, stay as the catalog lists them',
+    ).toHaveLength(2);
   });
 
   it('counts a passing test.fail() as a known defect, not a failure', () => {
