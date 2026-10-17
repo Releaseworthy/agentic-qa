@@ -6,7 +6,7 @@ feature: FEAT-CART
 severity: critical
 ---
 
-# BR-CART-02 — Never more than the stock
+# BR-CART-02: Never more than the stock
 
 A cart line can never hold more units than the product has in stock: add or
 update above stock → `409 OUT_OF_STOCK` ("Only N of "<name>" left in stock").

@@ -51,7 +51,7 @@ registration, cart or checkout to reach a start state, and never invent cards, d
 | ----------------------- | --------------------------------------------------------------------------------------------------------------- |
 | manual tester, explorer | `bun run qa:arrange --case TC-CHK-002 --name s1` → JSON with ids, `testData`, `next` commands to open the state |
 | bug repro (`repro.ts`)  | `await arrange(request, 'coupon', { expired: true })`, then only the call under test                            |
-| spec                    | the `arrange` fixture — the same recipe as the manual case it automates                                         |
+| spec                    | the `arrange` fixture, with the same recipe as the manual case it automates                                     |
 
 Each test case names its recipe in frontmatter (`setup: { recipe: cart, priceCents: 5000 }`). The recipes are
 knowledge too: `bun run qa:arrange --catalog` renders `knowledge/setup/SETUP-RECIPES.md` from the code, so agents
@@ -66,17 +66,17 @@ classified against the vault and a framework-arranged repro (`.claude/rules/fail
 
 | Class             | Evidence                                                                     | Test edit allowed                             |
 | ----------------- | ---------------------------------------------------------------------------- | --------------------------------------------- |
-| `PRODUCT_BUG`     | the app contradicts the rule                                                 | none — defect, then `test.fail` with its id   |
+| `PRODUCT_BUG`     | the app contradicts the rule                                                 | none: defect, then `test.fail` with its id    |
 | `INTENDED_CHANGE` | a rule/feature/card already states the new behaviour, changed after the test | expected values follow that document          |
 | `TEST_DEFECT`     | the app matches the vault; the locator, wait or data is wrong                | fix to the vault, never to the observed value |
-| `UNKNOWN`         | nothing documents the new behaviour                                          | none — a question for Product                 |
+| `UNKNOWN`         | nothing documents the new behaviour                                          | none: it's a question for Product             |
 
 A diff of `app/` is never evidence of intent: the code changing is exactly what a bug looks like. `qa/heal-guard.ts`
 enforces this mechanically. It compares tests and framework with the base ref and blocks:
 
 - removed or weakened assertions (exact → partial → presence);
 - skips (also `test.info().skip()`), a `test.fail` that doesn't pin an open defect the test is tagged with, hard
-  waits, timeouts (literal or constant), `configure()`, `toPass()` or retries — compared per occurrence, so a skip
+  waits, timeouts (literal or constant), `configure()`, `toPass()` or retries. These are compared per occurrence, so a skip
   moved to another test counts;
 - a new expected value, changed test data (a price or quantity moved off its boundary) or an API schema change,
   unless `--intended <DOC-ID>` names a document that's on the base branch, unchanged in this diff, and changed after

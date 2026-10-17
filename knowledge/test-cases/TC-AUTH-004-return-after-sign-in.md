@@ -10,11 +10,11 @@ automated_by: tests/ui/auth.spec.ts › Sign up and sign in › signing in retur
 setup: { recipe: customer, signedIn: false }
 ---
 
-# TC-AUTH-004 — Signing in returns to the page that asked for it
+# TC-AUTH-004: Signing in returns to the page that asked for it
 
 ## Preconditions
 
-- A registered customer, signed out in the browser: `bun run qa:arrange --case TC-AUTH-004 --name <session>` — its `user.email` and `user.password` are in the output.
+- A registered customer, signed out in the browser: `bun run qa:arrange --case TC-AUTH-004 --name <session>`; its `user.email` and `user.password` are in the output.
 
 ## Steps
 

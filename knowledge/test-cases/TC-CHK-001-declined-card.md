@@ -10,7 +10,7 @@ automated_by: tests/ui/checkout.spec.ts › Checkout › a declined card keeps t
 setup: { recipe: cart, priceCents: 1000, stock: 5, quantity: 1 }
 ---
 
-# TC-CHK-001 — A declined card keeps the customer on checkout
+# TC-CHK-001: A declined card keeps the customer on checkout
 
 ## Preconditions
 

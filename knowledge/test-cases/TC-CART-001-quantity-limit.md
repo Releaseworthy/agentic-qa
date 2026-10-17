@@ -10,7 +10,7 @@ automated_by: tests/ui/cart.spec.ts › Cart › more than 10 units shows the li
 setup: { recipe: cart, priceCents: 1000, stock: 50, quantity: 1 }
 ---
 
-# TC-CART-001 — A cart line cannot go above 10 units
+# TC-CART-001: A cart line cannot go above 10 units
 
 ## Preconditions
 

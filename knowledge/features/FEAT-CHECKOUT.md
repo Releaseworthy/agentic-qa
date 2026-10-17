@@ -20,7 +20,7 @@ Turns the cart into an order. The most critical flow: it moves money and stock.
 
 1. Empty cart → `400 EMPTY_CART`.
 2. Address: `name`, `line1`, `city`, `postalCode`, `country` all required;
-   `country` is a 2-letter upper-case ISO code (`US`) — see [[DEF-001]].
+   `country` is a 2-letter upper-case ISO code (`US`); see [[DEF-001]].
 3. Stock is re-checked for every line → `409 OUT_OF_STOCK` ([[BR-CART-02]]).
 4. The coupon minimum is re-checked ([[BR-COUP-02]]).
 5. The card is validated and charged ([[BR-PAY-01]]). Nothing changes on a refusal:

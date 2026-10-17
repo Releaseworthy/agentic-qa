@@ -39,7 +39,7 @@ export const SEVERITY_RANK: Record<Severity, number> = { critical: 4, high: 3, m
  */
 export const DEFECT_STATUSES = ['new', 'confirmed', 'open', 'fixed', 'reopened', 'closed', 'rejected'] as const;
 export type DefectStatus = (typeof DEFECT_STATUSES)[number];
-/** Still a risk to the release: anything not closed or rejected — a fix nobody retested is not done. */
+/** Still a risk to the release: anything not closed or rejected. A fix nobody has retested still counts. */
 export const isOpen = (d: Defect): boolean => d.status !== 'closed' && d.status !== 'rejected';
 
 const scalar = (v: unknown): string => (typeof v === 'string' || typeof v === 'number' ? String(v) : '');
@@ -57,7 +57,7 @@ function setupOf(v: unknown): TestCase['setup'] {
 export function loadDocs(dir = join(ROOT, 'knowledge')): Doc[] {
   const docs: Doc[] = [];
   for (const rel of new Glob('**/*.md').scanSync({ cwd: dir })) {
-    // `_curation/` holds the ledger and proposals waiting for a human — not knowledge.
+    // `_curation/` holds the ledger and proposals waiting for a human, which is not knowledge.
     if (rel.split(/[\\/]/).some((part) => part.startsWith('_'))) continue;
     const path = join(dir, rel);
     const text = readFileSync(path, 'utf8');

@@ -32,7 +32,7 @@ The agents call these engines instead of deciding by feel. All of them are unit-
 - **Knowledge guard** (`qa:knowledge-guard`). Every vault change in a diff must be one the knowledge MCP made and
   the ledger records ([details](knowledge.md#self-improving-knowledge)).
 - **Vault check** (`qa:vault`). Every document's folder, id pattern, enums and references, in CI; `upsert_document`
-  checks the same on write — a defect can't land on a rule's path, and `severity: High` can't silently drop out of
+  checks the same on write. A defect can't land on a rule's path, and `severity: High` can't silently drop out of
   the gate.
 
 ## Commands

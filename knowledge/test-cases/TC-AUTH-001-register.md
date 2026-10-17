@@ -10,7 +10,7 @@ automated_by: tests/ui/auth.spec.ts › Sign up and sign in › registering sign
 setup: { recipe: guest }
 ---
 
-# TC-AUTH-001 — Registering signs the new customer in
+# TC-AUTH-001: Registering signs the new customer in
 
 ## Preconditions
 
@@ -18,7 +18,7 @@ setup: { recipe: guest }
 
 ## Test data
 
-Name, email and password from `testData.registration` in the arrange output — a unique email and a password valid under BR-AUTH-01.
+Name, email and password from `testData.registration` in the arrange output: a unique email and a password valid under BR-AUTH-01.
 
 ## Steps
 

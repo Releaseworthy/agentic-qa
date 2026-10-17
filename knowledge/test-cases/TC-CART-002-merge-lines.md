@@ -10,7 +10,7 @@ automated_by: none
 setup: { recipe: product, priceCents: 1000, stock: 50 }
 ---
 
-# TC-CART-002 — Adding a product already in the cart adds to its line
+# TC-CART-002: Adding a product already in the cart adds to its line
 
 ## Preconditions
 

@@ -1,5 +1,5 @@
 /**
- * Defect triage and metrics from the vault — the deterministic half of the `bug-triage` workflow:
+ * Defect triage and metrics from the vault. This is the deterministic half of the `bug-triage` workflow:
  * suggested priority, release blocking, duplicate candidates, age, the test that pins each defect,
  * and the next step in its lifecycle.
  *
@@ -41,10 +41,10 @@ const NEXT: Record<DefectStatus, string> = {
   new: 'Verify it (verify-bug)',
   confirmed: 'Fix',
   open: 'Fix',
-  reopened: 'Fix again — the retest failed',
+  reopened: 'Fix again (the retest failed)',
   fixed: 'Retest (retest-bug)',
-  closed: '—',
-  rejected: '—',
+  closed: '-',
+  rejected: '-',
 };
 
 export type TriageRow = {
@@ -121,7 +121,7 @@ export type DefectMetrics = {
   byStatus: Record<string, number>;
   openBySeverity: Record<string, number>;
   openByFeature: Record<string, number>;
-  /** Which technique finds defects — where to invest test effort. */
+  /** Which technique finds defects, i.e. where test effort pays off. */
   foundBy: Record<string, number>;
   rejectedBy: Record<string, number>;
   meanOpenAgeDays: number | null;
@@ -158,7 +158,7 @@ export function toMarkdown(rows: TriageRow[], m: DefectMetrics): string {
   const kv = (r: Record<string, number>) =>
     Object.entries(r)
       .map(([k, v]) => `${k} ${v}`)
-      .join(' · ') || '—';
+      .join(' · ') || '-';
   return [
     '## Defect triage',
     '',
@@ -175,14 +175,14 @@ export function toMarkdown(rows: TriageRow[], m: DefectMetrics): string {
         'Next',
       ],
       rows.map((r) => [
-        `${r.id} — ${r.title}`,
+        `${r.id}: ${r.title}`,
         r.status,
         r.severity,
-        `${r.suggested} / ${r.recorded || '—'}${r.recorded && r.recorded !== r.suggested ? ' ⚠️' : ''}`,
+        `${r.suggested} / ${r.recorded || '-'}${r.recorded && r.recorded !== r.suggested ? ' ⚠️' : ''}`,
         r.blocker ? '🔴 yes' : 'no',
-        r.ageDays === null ? '—' : `${r.ageDays} d`,
-        r.duplicates.join(', ') || '—',
-        r.pinnedBy.length ? r.pinnedBy.join('<br>') : '—',
+        r.ageDays === null ? '-' : `${r.ageDays} d`,
+        r.duplicates.join(', ') || '-',
+        r.pinnedBy.length ? r.pinnedBy.join('<br>') : '-',
         r.next,
       ]),
     ),
@@ -192,7 +192,7 @@ export function toMarkdown(rows: TriageRow[], m: DefectMetrics): string {
     `- ${m.open} open of ${m.total} · by status: ${kv(m.byStatus)}`,
     `- Open by severity: ${kv(m.openBySeverity)} · by feature: ${kv(m.openByFeature)}`,
     `- Found by: ${kv(m.foundBy)}`,
-    `- Rejected: ${kv(m.rejectedBy)} · reopened: ${m.reopened} · mean open age: ${m.meanOpenAgeDays ?? '—'} d`,
+    `- Rejected: ${kv(m.rejectedBy)} · reopened: ${m.reopened} · mean open age: ${m.meanOpenAgeDays ?? '-'} d`,
   ].join('\n');
 }
 

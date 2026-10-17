@@ -16,7 +16,7 @@ updated: 2026-10-15
 
 - **Create the product a test changes.** Seeded products are shared by every
   parallel worker; buying one changes its stock under another test. Use
-  `seed.product({ stock, priceCents })` — the price also makes totals exact.
+  `seed.product({ stock, priceCents })`; setting the price also makes totals exact.
 - **A fresh customer per test** (`customer` fixture). One cart per user means a
   shared account makes parallel tests fight over one cart.
 - **Unique coupon codes** (`seed.coupon(...)`) when a test needs a coupon shape

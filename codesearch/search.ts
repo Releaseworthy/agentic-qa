@@ -5,7 +5,7 @@
  *    Σ tf × idf over the terms (rare terms count more).
  * 2. Symbols: a function, class or method whose name contains a term
  *    (camelCase-aware: `addToCart` matches "cart") lifts its file strongly.
- * 3. Graph: a file imported by — or importing — a strong hit inherits a share of
+ * 3. Graph: a file imported by (or importing) a strong hit inherits a share of
  *    its score, so the page object behind a matching spec surfaces too; `near`
  *    pins the ranking around one file.
  */
@@ -26,7 +26,7 @@ export type FileResult = {
 
 const STOP = new Set(['the', 'and', 'for', 'with', 'that', 'this', 'from', 'test', 'tests', 'how', 'what', 'where']);
 
-/** Lower-case search terms: camelCase and snake_case split, stop words and 1–2 letter words dropped. */
+/** Lower-case search terms: camelCase and snake_case split, stop words and 1-2 letter words dropped. */
 export function terms(query: string): string[] {
   const words = query
     .replace(/([a-z])([A-Z])/g, '$1 $2')

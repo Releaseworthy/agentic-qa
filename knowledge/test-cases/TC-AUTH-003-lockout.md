@@ -10,11 +10,11 @@ automated_by: none
 setup: { recipe: customer, signedIn: false }
 ---
 
-# TC-AUTH-003 — Five failed sign-ins lock the account
+# TC-AUTH-003: Five failed sign-ins lock the account
 
 ## Preconditions
 
-- A registered customer, signed out in the browser: `bun run qa:arrange --case TC-AUTH-003 --name <session>` — its `user.email` and `user.password` are in the output.
+- A registered customer, signed out in the browser: `bun run qa:arrange --case TC-AUTH-003 --name <session>`; its `user.email` and `user.password` are in the output.
 
 ## Test data
 

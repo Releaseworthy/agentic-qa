@@ -22,7 +22,7 @@ export type ManualResultKind = z.infer<typeof Result>;
 const Step = z.object({
   n: z.number().int().positive(),
   result: Result,
-  /** What was seen, verbatim — the expected result is in the case itself. */
+  /** What was seen, verbatim. The expected result lives in the case itself. */
   observed: z.string().min(1),
   evidence: z.string().optional(),
 });
@@ -152,8 +152,8 @@ export function toMarkdown(p: ManualProgress): string {
         x.feature,
         x.priority,
         `${icon[x.result]} ${x.result}${x.runId ? ` (${x.runId})` : ''}`,
-        x.defects.join(', ') || '—',
-        x.caseNeedsUpdate ?? '—',
+        x.defects.join(', ') || '-',
+        x.caseNeedsUpdate ?? '-',
       ]),
     ),
   ].join('\n');

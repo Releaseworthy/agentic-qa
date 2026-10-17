@@ -10,7 +10,7 @@ automated_by: none
 setup: { recipe: cart, priceCents: 1200, stock: 10, quantity: 2, coupon: WELCOME10 }
 ---
 
-# TC-COUP-002 — A coupon falls off when the cart drops below its minimum
+# TC-COUP-002: A coupon falls off when the cart drops below its minimum
 
 ## Preconditions
 

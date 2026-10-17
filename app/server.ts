@@ -1,5 +1,5 @@
 /**
- * ShopLite — the system under test. A small shop with a REST API (/api/*) and
+ * ShopLite is the system under test: a small shop with a REST API (/api/*) and
  * a single-page UI (/). In-memory, so every start is a clean seed.
  *
  * Started through framework/setup/app-server.ts, which sets it up as a TEST_ENV:
@@ -74,5 +74,5 @@ const server = Bun.serve({
 
 const defects = enabledDefects();
 console.log(
-  `ShopLite (${ENVIRONMENT}) on http://localhost:${server.port}${defects.length ? ` — seeded defects ON: ${defects.join(', ')}` : ''}`,
+  `ShopLite (${ENVIRONMENT}) on http://localhost:${server.port}${defects.length ? `, seeded defects ON: ${defects.join(', ')}` : ''}`,
 );

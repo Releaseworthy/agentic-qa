@@ -21,7 +21,7 @@ bearer token (valid 8 hours). Every cart and order endpoint needs it.
   Emails are stored lower-case, so `A@x.test` and `a@x.test` are the same account.
   Passwords follow [[BR-AUTH-01]].
 - Sign in: `200 { user, token }`. A wrong password and an unknown email answer the
-  same `401 INVALID_CREDENTIALS` with the same message — no account enumeration.
+  same `401 INVALID_CREDENTIALS` with the same message, so there is no account enumeration.
   Repeated failures lock the account ([[BR-AUTH-02]]).
 - Sign out deletes the token; it answers 401 afterwards.
 - UI: after signing in, the app returns to the page that asked for it (`?next=`),
@@ -30,5 +30,5 @@ bearer token (valid 8 hours). Every cart and order endpoint needs it.
 ## Risks
 
 - Lockout is per account, so an attacker can lock out a known customer (accepted risk).
-- A token is the only credential — losing it to XSS is a full account takeover;
+- A token is the only credential, so losing it to XSS is a full account takeover;
   every rendered string is escaped.

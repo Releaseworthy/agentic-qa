@@ -6,11 +6,11 @@ feature: FEAT-CHECKOUT
 severity: critical
 ---
 
-# BR-PAY-01 — Card validation
+# BR-PAY-01: Card validation
 
 The mock payment gateway accepts a card when:
 
-- the number has 13–19 digits (spaces and dashes ignored) and passes the **Luhn**
+- the number has 13-19 digits (spaces and dashes ignored) and passes the **Luhn**
   check → else `400 INVALID_CARD`;
 - the expiry is `MM/YY` and not before the current month → else `400 CARD_EXPIRED`
   (a card is valid through the end of its expiry month);

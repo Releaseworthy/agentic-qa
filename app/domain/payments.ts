@@ -19,8 +19,8 @@ function luhn(digits: string): boolean {
 }
 
 /**
- * BR-PAY-01: 13–19 digits passing the Luhn check, an MM/YY expiry not in the
- * past, a 3–4 digit CVC. Returns the last four digits.
+ * BR-PAY-01: 13-19 digits passing the Luhn check, an MM/YY expiry not in the
+ * past, a 3-4 digit CVC. Returns the last four digits.
  */
 export function charge(card: Card, amountCents: number, now = new Date()): string {
   const number = card.cardNumber.replace(/[\s-]/g, '');

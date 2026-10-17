@@ -7,7 +7,7 @@ feature: FEAT-CHECKOUT
 related: [FEAT-CART, BR-SHIP-01, BR-COUP-04]
 ---
 
-# CARD-142 — Gift wrapping at checkout
+# CARD-142: Gift wrapping at checkout
 
 **As a** customer buying a present, **I want** to have my order gift-wrapped
 with a message, **so that** it arrives ready to give.

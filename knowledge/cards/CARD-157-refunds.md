@@ -7,7 +7,7 @@ feature: FEAT-ORDERS
 related: [BR-ORD-01, BR-ORD-02, BR-PAY-01]
 ---
 
-# CARD-157 — Refund on cancellation
+# CARD-157: Refund on cancellation
 
 **As a** customer who cancels an order, **I want** my money back on the card I
 paid with, **so that** I am not charged for something I will not receive.

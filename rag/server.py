@@ -1,7 +1,7 @@
 """The `knowledge` MCP server: hybrid search over the vault, graph lookups, and write-back.
 
     uv run python -m rag.server            stdio (Claude Code, Agent SDK)
-    uv run python -m rag.server --http     streamable HTTP on :8765/mcp — the shared endpoint
+    uv run python -m rag.server --http     streamable HTTP on :8765/mcp, the shared endpoint
                                            other teams' AI tools connect to (see rag/Dockerfile)
 
 Writes go through this server so the index stays in sync: a written document is
@@ -63,7 +63,7 @@ READ_ONLY = False
 
 def _writable() -> None:
     if READ_ONLY:
-        raise ValueError("this knowledge endpoint is read-only — vault changes go through the repo's agents and PRs")
+        raise ValueError("this knowledge endpoint is read-only; vault changes go through the repo's agents and PRs")
 
 
 def state() -> State:
@@ -176,7 +176,7 @@ ARTIFACTS: dict[str, dict[str, Any]] = {
 
 def check_artifact(path: str, doc: Document) -> None:
     """Raises unless `doc` is a QA artifact at a path of its own: in its folder (checked on the resolved path, so `..`
-    can't climb out of it), named after its id, not replacing another document — with its id pattern and valid enums.
+    can't climb out of it), named after its id, not replacing another document, and with its id pattern and valid enums.
     A write can never land on a rule, feature or card, whatever type the content claims."""
     if doc.type in GENERATED:
         raise ValueError(f"a {doc.type} document is generated from code: change framework/setup/recipes.ts, then bun run qa:arrange --catalog")
@@ -199,7 +199,7 @@ def check_artifact(path: str, doc: Document) -> None:
     if resolved.exists():
         current = parse(Path(rel), resolved.read_text(encoding="utf-8"))
         if current.id != doc.id:
-            raise ValueError(f"{rel} holds {current.id} — {doc.id} gets a file of its own")
+            raise ValueError(f"{rel} holds {current.id}; {doc.id} needs a file of its own")
     for key, allowed in spec["enums"].items():
         if str(doc.meta.get(key)) not in allowed:
             raise ValueError(f"{key} is one of {sorted(allowed)}, got {doc.meta.get(key)!r}")
@@ -207,7 +207,7 @@ def check_artifact(path: str, doc: Document) -> None:
 
 @server.tool()
 def upsert_document(path: str, content: str) -> dict[str, Any]:
-    """Create or replace a QA artifact — a manual test case or a defect (full Markdown with frontmatter) — and re-index it.
+    """Create or replace a QA artifact (a manual test case or a defect, as full Markdown with frontmatter) and re-index it.
 
     path is repo-relative, e.g. `knowledge/test-cases/TC-CART-002-merge-lines.md`. Anything else is
     knowledge: propose it with propose_knowledge.
@@ -235,7 +235,7 @@ def propose_knowledge(
     kind: add | update | deprecate. type: learning (default) | feature | rule | card | overview.
     body: learning → the lesson (what to do, why, where); other types → the whole document with frontmatter;
           deprecate → the reason. target: the existing id for update / deprecate.
-    evidence: [{kind, ref, quote?}] — kind is test-run | api-response | screenshot | review | pr-comment | human |
+    evidence: [{kind, ref, quote?}], where kind is test-run | api-response | screenshot | review | pr-comment | human |
           code | transcript; ref is a path, test title, PR/comment id or URL.
     source: where it comes from ("regression run", "PR #12 review"). probe: a question this knowledge answers.
 
@@ -276,8 +276,8 @@ def propose_knowledge(
 def commit_knowledge(proposal_id: str, verdict: str, scores: dict[str, int], rationale: str, judge: str = "knowledge-curator") -> dict[str, Any]:
     """Step 2: applies the judge's verdict to an evaluated proposal and records it in the ledger.
 
-    verdict: accept | reject | needs_human. scores: grounded, reusable, actionable, scoped, consistent (1–5).
-    Accepted only when the gate passed, every score ≥ 3 and the mean ≥ 4 — otherwise recorded as rejected.
+    verdict: accept | reject | needs_human. scores: grounded, reusable, actionable, scoped, consistent (1-5).
+    Accepted only when the gate passed, every score ≥ 3 and the mean ≥ 4; anything else is recorded as rejected.
     Product-owned changes are filed under knowledge/_curation/proposals/ for a human instead of written.
     """
     if verdict not in ("accept", "reject", "needs_human"):

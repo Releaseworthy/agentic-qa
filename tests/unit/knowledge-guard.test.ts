@@ -43,7 +43,7 @@ describe('learnings and feature maps', () => {
     expect(verdicts([ledger(decision()), file(PATH, LESSON)])).toEqual([`ok ${LEDGER}`, `ok ${PATH}`]);
   });
 
-  it('are blocked without a decision — a learning written straight to disk skipped the gate and the judge', () => {
+  it('are blocked without a decision, because a learning written straight to disk skipped the gate and the judge', () => {
     expect(verdicts([file(PATH, LESSON)])).toEqual([`blocked ${PATH}`]);
   });
 

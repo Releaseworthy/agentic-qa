@@ -12,11 +12,11 @@ orders. It is the system under test of this repository.
 
 ## Personas
 
-- **Guest** — browses the catalog ([[FEAT-CATALOG]]); must sign in to use the cart.
-- **Customer** — registers and signs in ([[FEAT-AUTH]]), keeps one cart ([[FEAT-CART]]),
+- **Guest**: browses the catalog ([[FEAT-CATALOG]]); must sign in to use the cart.
+- **Customer**: registers and signs in ([[FEAT-AUTH]]), keeps one cart ([[FEAT-CART]]),
   applies coupons ([[FEAT-COUPON]]), checks out ([[FEAT-CHECKOUT]]), sees and cancels
   orders ([[FEAT-ORDERS]]).
-- **Admin** — creates products and coupons, ships orders. Admin endpoints are
+- **Admin**: creates products and coupons, ships orders. Admin endpoints are
   also how the test framework sets up its data.
 
 ## Money
@@ -39,7 +39,7 @@ customers' orders, [[BR-ORD-03]]), 409 conflict (stock, state), 410 expired,
 
 ## Glossary
 
-- **Line** — one product in the cart with its quantity.
-- **Placed / shipped / cancelled** — the order states ([[BR-ORD-01]]).
-- **Seeded defect** — a known bug that can be switched on with `SHOPLITE_DEFECTS`
+- **Line**: one product in the cart with its quantity.
+- **Placed / shipped / cancelled**: the order states ([[BR-ORD-01]]).
+- **Seeded defect**: a known bug that can be switched on with `SHOPLITE_DEFECTS`
   to prove the tests catch it.

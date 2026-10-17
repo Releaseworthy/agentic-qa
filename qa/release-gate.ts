@@ -13,7 +13,7 @@
  *   - a critical rule has neither an automated test nor a passing manual run;
  *   - the pass rate is below 95 %.
  * CONDITIONAL GO when there are other failures, flaky tests, open medium/low
- * defects, or untested non-critical rules — each listed as a residual risk
+ * defects, or untested non-critical rules. Each one is listed as a residual risk
  * with the mitigation it needs. GO otherwise.
  */
 
@@ -56,7 +56,7 @@ export type GateReport = {
 const MIN_PASS_RATE = 0.95;
 
 /**
- * `catalog`: every test the suite defines, with this run's results laid over it (`withResults`) — coverage is judged
+ * `catalog`: every test the suite defines, with this run's results laid over it (`withResults`). Coverage is judged
  * on it, so an impact-selected run doesn't read as missing tests, and a `test.fail` pin or a skip that ran counts as
  * what it is.
  */
@@ -96,7 +96,7 @@ export function assess(
     risk(`Flaky: \`${t.file}\` › ${t.title} [${t.project}]`, 'Find the missing wait or shared data; retries hide it');
 
   for (const d of vault.openDefects()) {
-    const msg = `Open ${d.severity} defect ${d.id} — ${d.title} (${d.feature})`;
+    const msg = `Open ${d.severity} defect ${d.id}: ${d.title} (${d.feature})`;
     if (SEVERITY_RANK[d.severity] >= 3) blocker(msg, 'Fix before release, or a product owner explicitly accepts it');
     else risk(msg, 'Release note / known issue; schedule the fix');
   }
@@ -120,7 +120,7 @@ export function assess(
       ids.some(
         (id) => (vault.feature(id)?.criticality ?? 0) >= 4 || SEVERITY_RANK[vault.rule(id)?.severity ?? 'low'] >= 3,
       );
-    const msg = `Manual case ${r.id} ${r.result} (${r.runId})${r.defects.length ? ` — ${r.defects.join(', ')}` : ''}`;
+    const msg = `Manual case ${r.id} ${r.result} (${r.runId})${r.defects.length ? `: ${r.defects.join(', ')}` : ''}`;
     if (critical) blocker(msg, 'Fix and retest (retest-bug), or update the case if it is out of date');
     else risk(msg, r.result === 'blocked' ? 'Unblock and run it' : 'Triage the failure (bug-triage)');
   }
@@ -199,20 +199,20 @@ export function toMarkdown(r: GateReport): string {
     table(
       ['Feature', 'Criticality', 'Tests', 'Failed', 'Flaky', 'Open defects', 'Status'],
       r.features.map((f) => [
-        `${f.id} — ${f.title}`,
+        `${f.id}: ${f.title}`,
         f.criticality,
         f.tests,
         f.failed,
         f.flaky,
-        f.openDefects.join(', ') || '—',
+        f.openDefects.join(', ') || '-',
         f.status,
       ]),
     ),
     '',
     '### Sign-off',
     '',
-    '- [ ] QA lead — evidence reviewed',
-    '- [ ] Product owner — residual risks accepted',
+    '- [ ] QA lead: evidence reviewed',
+    '- [ ] Product owner: residual risks accepted',
   ].join('\n');
 }
 

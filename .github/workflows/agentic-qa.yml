@@ -1,15 +1,15 @@
 name: Agentic QA
 
-# Runs one agentic QA workflow headless with the Claude Agent SDK — the same
+# Runs one agentic QA workflow headless with the Claude Agent SDK, using the same
 # skills and subagents a QA engineer uses in Claude Code.
 #   - on demand: pick the workflow and its arguments
 #   - on a PR labelled `agentic-qa`: a risk-based test plan for the PR, then
 #     impact-based regression with triage; the summary is posted on the PR
-#   - on a merged PR: `learn <PR>` — review comments and human edits to agent output become curated
+#   - on a merged PR: `learn <PR>`: review comments and human edits to agent output become curated
 #     knowledge (gate + independent judge); accepted lessons arrive as a PR
 # Workflows that write tests or vault documents open a pull request with them.
 #
-# Secrets: ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`) — without either, the job
+# Secrets: ANTHROPIC_API_KEY or CLAUDE_CODE_OAUTH_TOKEN (from `claude setup-token`). Without either, the job
 # explains and skips. Optional AGENT_PR_TOKEN (fine-grained PAT or GitHub App token: contents + pull requests
 # write) so the agent's PR triggers CI; without it the publish job dispatches CI on the branch instead.
 
@@ -201,7 +201,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           cat out/agent-runs/*/summary.md > out/pr-comment.md 2>/dev/null ||
-            echo "The agent run left no summary — see the [run log]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)." > out/pr-comment.md
+            echo "The agent run left no summary. See the [run log]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)." > out/pr-comment.md
           gh pr comment "$PR" --body-file out/pr-comment.md
         env:
           PR: ${{ github.event.pull_request.number }}
@@ -212,7 +212,7 @@ jobs:
       - name: Open a PR with what the agent wrote
         if: needs.agent.result == 'success' && needs.agent.outputs.patch == 'true'
         run: |
-          # Only the paths an agent may write — whatever else a patch holds is dropped.
+          # Apply only the paths an agent is allowed to write and drop everything else in the patch.
           git apply --index --include='tests/*' --include='framework/*' --include='knowledge/*' \
             --include='rag/golden.learned.yaml' out/agent.patch
           if git diff --cached --quiet; then echo "Nothing written."; exit 0; fi

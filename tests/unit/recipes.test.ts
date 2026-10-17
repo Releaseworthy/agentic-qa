@@ -58,7 +58,7 @@ describe('checkCases', () => {
     expect(
       problems.map((p) => p.split(': ')[1]?.slice(0, 20)),
       'one problem each',
-    ).toEqual(['no `setup` — name th', 'setup.recipe "basket', 'setup params']);
+    ).toEqual(['no `setup` (add the ', 'setup.recipe "basket', 'setup params']);
   });
 
   it('flags preconditions that set themselves up, and skips deprecated cases', () => {

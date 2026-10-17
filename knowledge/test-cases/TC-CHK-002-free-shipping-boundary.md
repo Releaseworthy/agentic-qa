@@ -10,7 +10,7 @@ automated_by: none
 setup: { recipe: cart, priceCents: 5000, stock: 10, quantity: 1 }
 ---
 
-# TC-CHK-002 — Shipping is free from exactly $50.00 after the discount
+# TC-CHK-002: Shipping is free from exactly $50.00 after the discount
 
 ## Preconditions
 

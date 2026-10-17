@@ -10,11 +10,11 @@ automated_by: tests/ui/catalog.spec.ts › Catalog › search narrows the list t
 setup: { recipe: guest }
 ---
 
-# TC-CAT-001 — Search narrows the catalog to matching products
+# TC-CAT-001: Search narrows the catalog to matching products
 
 ## Preconditions
 
-- Signed out, nothing created — the catalog is public and this case changes nothing (runs on live too): `bun run qa:arrange --case TC-CAT-001 --name <session>`.
+- Signed out, nothing created (the catalog is public and this case changes nothing, so it runs on live too): `bun run qa:arrange --case TC-CAT-001 --name <session>`.
 
 ## Steps
 

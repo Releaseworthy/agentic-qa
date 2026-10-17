@@ -1,7 +1,7 @@
 /**
  * Runs once before all workers:
  *
- *   1. The base URL must answer as TEST_ENV — a staging config never runs against live.
+ *   1. The base URL must answer as TEST_ENV, so a staging config can't run against live.
  *   2. With test hooks, pin the app's seeded defects to exactly SHOPLITE_DEFECTS
  *      (default none), so a reused local server left in a defect mode by an
  *      exploratory session can't change this run's results.

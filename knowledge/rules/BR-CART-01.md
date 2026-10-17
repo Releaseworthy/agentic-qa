@@ -6,7 +6,7 @@ feature: FEAT-CART
 severity: high
 ---
 
-# BR-CART-01 — 1 to 10 units per cart line
+# BR-CART-01: 1 to 10 units per cart line
 
 A cart line holds **at least 1 and at most 10 units**, whichever way it is
 changed:

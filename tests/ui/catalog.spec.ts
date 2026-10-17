@@ -34,7 +34,7 @@ test.describe('Catalog', { tag: '@FEAT-CATALOG' }, () => {
     });
 
     await test.step('Then the page lists the same toys in the same order', async () => {
-      await expect(catalogPage.productTitles, 'toys only, cheapest first — the same order as the API').toHaveText(
+      await expect(catalogPage.productTitles, 'toys only, cheapest first, in the same order as the API').toHaveText(
         expected,
       );
     });

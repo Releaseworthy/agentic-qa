@@ -1,5 +1,5 @@
 /**
- * Claude Code PreToolUse hook (.claude/settings.json): applies agents/tool-policy.ts to every session — interactive,
+ * Claude Code PreToolUse hook (.claude/settings.json): applies agents/tool-policy.ts to every session: interactive,
  * and headless through agents/run.ts, which loads the same project settings and marks its runs with AGENTIC_QA_RUN.
  * Reads the hook input on stdin; prints a deny decision, or nothing to let the call through.
  */

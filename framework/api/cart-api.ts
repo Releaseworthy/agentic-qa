@@ -1,7 +1,7 @@
 import { HttpClient } from '@api/client';
 import { Cart } from '@api/schemas';
 
-/** /api/cart — always the signed-in user's own cart. */
+/** /api/cart: always the signed-in user's own cart. */
 export class CartApi extends HttpClient {
   get(): Promise<Cart> {
     return this.call('GET', '/api/cart', Cart);

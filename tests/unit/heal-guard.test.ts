@@ -122,7 +122,7 @@ describe('review', () => {
     expect(kinds(review([moved], OPEN, none))).toContain('suppressed:blocked');
   });
 
-  it('needs evidence for changed test data — a boundary moved is a hidden failure', () => {
+  it('needs evidence for changed test data, since a moved boundary can hide a failure', () => {
     const withData = (cents: number) =>
       original.replace(
         'async ({ cartPage }) => {',

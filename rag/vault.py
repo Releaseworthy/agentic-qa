@@ -97,7 +97,7 @@ def chunk(doc: Document) -> list[Chunk]:
                     id=f"{doc.id}#{len(chunks)}",
                     doc_id=doc.id,
                     section=heading if len(parts) == 1 else f"{heading} ({n + 1})",
-                    text=f"{doc.id} — {doc.title} › {heading}\n\n{part}",
+                    text=f"{doc.id}: {doc.title} › {heading}\n\n{part}",
                 )
             )
     return chunks

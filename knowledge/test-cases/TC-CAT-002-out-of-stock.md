@@ -10,11 +10,11 @@ automated_by: tests/ui/catalog.spec.ts › Catalog › an out-of-stock product c
 setup: { recipe: product, priceCents: 1500, stock: 0 }
 ---
 
-# TC-CAT-002 — An out-of-stock product cannot be added to the cart
+# TC-CAT-002: An out-of-stock product cannot be added to the cart
 
 ## Preconditions
 
-- A product with stock 0: `bun run qa:arrange --case TC-CAT-002 --name <session>` — its page is `#/product/<data.product.id>`.
+- A product with stock 0: `bun run qa:arrange --case TC-CAT-002 --name <session>`; its page is `#/product/<data.product.id>`.
 
 ## Steps
 
