@@ -34,7 +34,14 @@
     "PreToolUse": [
       {
         "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit|mcp__knowledge__commit_knowledge|mcp__knowledge__upsert_document",
-        "hooks": [{ "type": "command", "command": "bun \"$CLAUDE_PROJECT_DIR/agents/tool-policy-hook.ts\"", "timeout": 10 }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun \"${CLAUDE_PROJECT_DIR}/agents/tool-policy-hook.ts\"",
+            "timeout": 10,
+            "onFailure": "block"
+          }
+        ]
       }
     ]
   }

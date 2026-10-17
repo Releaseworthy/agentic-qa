@@ -69,9 +69,11 @@ interactive or headless:
 | `gh` read-only (a plain GET); PR comments only via `qa:pr-feedback`                 | anyone can comment on a public repo, so outsiders are filtered out |
 | no `git push`/`commit`/`fetch`, no network beyond localhost, no reading credentials | an injected instruction can't publish or leak                      |
 
-The hook checks every command, including ones inside pipes, `&&`, `$(…)`, `bash -c`, `xargs` and redirects, and it
-refuses any call it can't parse. It isn't a sandbox, though: an agent that writes and runs a script can do more. That's
-why the CI agent job has a read-only GitHub token, and a separate job re-checks and publishes its patch
+The hook checks every command, including ones inside pipes, `&&`, `$(…)`, `bash -c`, `xargs` and redirects. It fails
+closed: a call whose hook input it can't read, or that the policy throws on, is refused, and `"onFailure": "block"`
+(Claude Code v2.1.295+) refuses the call when the hook crashes, can't start or times out. It isn't a sandbox, though:
+it splits commands with its own reader, not a full shell parser, and an agent that writes and runs a script can do
+more. That's why the CI agent job has a read-only GitHub token, and a separate job re-checks and publishes its patch
 ([CI](ci.md#agentic-qa)).
 
 ## Headless runner
