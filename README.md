@@ -120,7 +120,7 @@ flowchart LR
 ├─ agents/              Claude Agent SDK runner, workflow registry, tool policy (+ its PreToolUse hook)
 ├─ .claude/             skills/ (19 workflows) · agents/ (8 subagents) · rules/ · settings.json
 ├─ docs/                agents · knowledge · framework · qa-engines · ci · examples/ (outputs of real runs)
-├─ scripts/             crypto CLI (encrypt / decrypt / keygen), GitHub Pages landing page
+├─ scripts/             crypto CLI (encrypt / decrypt / keygen), GitHub Pages report (rendered by qa/site-report.ts)
 ├─ .github/             CI workflows, setup action
 ├─ .azure/              setup step template for the Azure pipeline
 ├─ azure-pipelines.yml  Azure DevOps pipeline

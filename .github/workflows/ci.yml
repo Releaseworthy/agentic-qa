@@ -251,7 +251,7 @@ jobs:
         run: |
           mkdir -p site
           cp -r playwright-report site/report
-          cp out/release-gate.md out/traceability.md out/triage.md site/
+          cp out/release-gate.{md,json} out/traceability.{md,json} out/triage.{md,json} site/
           bun run scripts/site-index.ts site
       - uses: actions/upload-artifact@v7
         with:

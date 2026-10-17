@@ -37,6 +37,20 @@ export function formatDate(date: Date, pattern: DateFormat): string {
   return format(date, pattern);
 }
 
+/** A moment as a report shows it, in a fixed IANA zone whatever the machine's: `Oct 18, 2026, 02:10 GMT+7`. */
+export function formatInZone(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZoneName: 'shortOffset',
+  }).format(date);
+}
+
 /** `date` moved by `duration`; negative values move back: `shift(now(), { months: -1 })`. */
 export function shift(date: Date, duration: Duration): Date {
   return add(date, duration);

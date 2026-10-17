@@ -1,45 +1,69 @@
 /**
- * Builds the GitHub Pages landing page for one CI run: the release assessment
- * traceability and the defect triage board (rendered from their Markdown) plus a link to the full
- * Playwright HTML report.
+ * Builds the GitHub Pages landing page for one CI run (qa/site-report.ts renders it) from the JSON the engines
+ * wrote: the release gate, traceability and defect triage, plus the run's start and duration from the Playwright
+ * JSON when it is there. The full Playwright HTML report is linked at report/.
  *
- *   bun run scripts/site-index.ts <site dir>     expects release-gate.md, traceability.md, triage.md, report/
+ *   bun run scripts/site-index.ts <site dir> [--from <dir>]
+ *     reads release-gate.json, traceability.json, triage.json and results.json from --from (default out/)
+ *     writes <site dir>/index.html
+ *
+ * Times are shown in REPORT_TIME_ZONE (default Asia/Ho_Chi_Minh, GMT+7, the maintainer's zone).
  */
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { marked } from 'marked';
+import { parseArgs } from 'node:util';
+import type { DefectMetrics, TriageRow } from '@qa/defects';
+import type { GateReport } from '@qa/release-gate';
+import { renderSite, type RunInfo } from '@qa/site-report';
+import { flatten, type PlaywrightJson } from '@qa/tests-catalog';
+import type { Traceability } from '@qa/traceability';
+import { ROOT } from '@qa/vault';
+import { formatInZone, fromIso } from '@utils/date';
 
-const site = process.argv[2] ?? 'site';
-const section = async (file: string): Promise<string> => marked.parse(readFileSync(join(site, file), 'utf8'));
-const run = process.env.GITHUB_RUN_NUMBER ? `run #${process.env.GITHUB_RUN_NUMBER}` : 'local run';
-const sha = (process.env.GITHUB_SHA ?? '').slice(0, 7);
+const { values, positionals } = parseArgs({
+  args: Bun.argv.slice(2),
+  options: { from: { type: 'string' } },
+  allowPositionals: true,
+});
+const site = positionals[0] ?? 'site';
+const from = values.from ?? join(ROOT, 'out');
+const read = (file: string): unknown => {
+  const path = join(from, file);
+  if (!existsSync(path)) throw new Error(`${path} is missing: run qa:gate, qa:trace and qa:triage first`);
+  return JSON.parse(readFileSync(path, 'utf8'));
+};
 
-const html = `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>agentic-qa · QA report</title>
-<style>
-  :root { --fg:#17233a; --muted:#5d6879; --line:#d7e0e5; --accent:#087f7b; --bg:#fff; }
-  @media (prefers-color-scheme: dark) { :root { --fg:#e6edf3; --muted:#9aa7b4; --line:#30363d; --accent:#3fb9b3; --bg:#0d1117; } }
-  body { margin:0; padding:24px 16px; font:15px/1.5 system-ui,sans-serif; color:var(--fg); background:var(--bg); }
-  main { max-width:1100px; margin:0 auto; }
-  a { color:var(--accent); }
-  table { border-collapse:collapse; width:100%; margin:8px 0 16px; font-size:14px; display:block; overflow-x:auto; }
-  th, td { border-bottom:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; }
-  .meta { color:var(--muted); }
-  .cta { display:inline-block; margin:8px 0 24px; padding:8px 14px; border:1px solid var(--accent); border-radius:6px; text-decoration:none; }
-</style>
-</head>
-<body><main>
-<h1>agentic-qa · QA report</h1>
-<p class="meta">${run}${sha ? ` · ${sha}` : ''} · <a href="https://github.com/hoanglan9569/agentic-qa">repository</a></p>
-<a class="cta" href="report/index.html">Open the Playwright report →</a>
-${await section('release-gate.md')}
-${await section('traceability.md')}
-${await section('triage.md')}
-</main></body></html>
-`;
+const env = process.env;
+const zone = env.REPORT_TIME_ZONE ?? 'Asia/Ho_Chi_Minh';
+const repoUrl =
+  env.GITHUB_SERVER_URL && env.GITHUB_REPOSITORY
+    ? `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}`
+    : 'https://github.com/hoanglan9569/agentic-qa';
+
+const run: RunInfo = {
+  label: env.GITHUB_RUN_NUMBER ? `#${env.GITHUB_RUN_NUMBER}` : 'Local',
+  projects: [],
+  repoUrl,
+  ...(env.GITHUB_SHA ? { sha: env.GITHUB_SHA, commitUrl: `${repoUrl}/commit/${env.GITHUB_SHA}` } : {}),
+  ...(env.GITHUB_RUN_ID ? { runUrl: `${repoUrl}/actions/runs/${env.GITHUB_RUN_ID}` } : {}),
+};
+
+if (existsSync(join(from, 'results.json'))) {
+  const results = read('results.json') as PlaywrightJson;
+  const { startTime, duration } = results.stats ?? {};
+  if (typeof startTime === 'string') run.started = formatInZone(fromIso(startTime), zone);
+  if (typeof duration === 'number') run.durationMs = duration;
+  const perProject = new Map<string, number>();
+  for (const t of flatten(results)) perProject.set(t.project, (perProject.get(t.project) ?? 0) + 1);
+  run.projects = [...perProject].map(([name, tests]) => ({ name, tests }));
+}
+
+const html = renderSite({
+  gate: read('release-gate.json') as GateReport,
+  trace: read('traceability.json') as Traceability,
+  triage: read('triage.json') as { rows: TriageRow[]; metrics: DefectMetrics },
+  run,
+});
 writeFileSync(join(site, 'index.html'), html);
 console.log(`wrote ${join(site, 'index.html')}`);
