@@ -72,9 +72,13 @@ classified against the vault and a framework-arranged repro (`.claude/rules/fail
 | `UNKNOWN`         | nothing documents the new behaviour                                          | none: it's a question for Product             |
 
 A diff of `app/` is never evidence of intent: the code changing is exactly what a bug looks like. `qa/heal-guard.ts`
-enforces this mechanically. It compares tests and framework with the base ref and blocks:
+enforces this mechanically. It parses tests and framework with the TypeScript compiler API, compares them with the
+base ref and blocks:
 
-- removed or weakened assertions (exact → partial → presence);
+- removed or weakened assertions (exact → partial → presence), and an assertion moved where it can no longer fail
+  the test: under a try/catch or `.catch()`, a condition (if, ternary, `&&` `||` `??`, switch), or after a return,
+  throw, break or continue. It reads the syntax, not what runs: an assertion moved into a loop or a callback that is
+  never called still gets past it;
 - skips (also `test.info().skip()`), a `test.fail` that doesn't pin an open defect the test is tagged with, hard
   waits, timeouts (literal or constant), `configure()`, `toPass()` or retries. These are compared per occurrence, so a skip
   moved to another test counts;

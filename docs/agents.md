@@ -60,18 +60,21 @@ Each subagent gets only the knowledge tools its role needs (read-only for the sc
 PreToolUse hook (`agents/tool-policy.ts`, wired in `.claude/settings.json`) applies the same rules to every session,
 interactive or headless:
 
-| Rule                                                                                | Why                                                                |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| only `knowledge-curator` calls `commit_knowledge`                                   | the proposer can't judge its own lesson                            |
-| only `qa-writer` calls `upsert_document`                                            | test cases and defects have one author, reviewed                   |
-| the vault changes only through the knowledge MCP, never Write/Edit or a shell write | nothing reaches `knowledge/` past the gate and the judge           |
-| a headless run writes only `tests/`, `framework/`, `out/`                           | it can't edit the app, the engines that check it, or this policy   |
-| `gh` read-only (a plain GET); PR comments only via `qa:pr-feedback`                 | anyone can comment on a public repo, so outsiders are filtered out |
-| no `git push`/`commit`/`fetch`, no network beyond localhost, no reading credentials | an injected instruction can't publish or leak                      |
+| Rule                                                                                | Why                                                                        |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| only `knowledge-curator` calls `commit_knowledge`                                   | the proposer can't judge its own lesson                                    |
+| only `qa-writer` calls `upsert_document`                                            | test cases and defects have one author, reviewed                           |
+| the vault changes only through the knowledge MCP, never Write/Edit or a shell write | nothing reaches `knowledge/` past the gate and the judge                   |
+| a headless run writes only `tests/`, `framework/`, `out/`                           | it can't edit the app, the engines that check it, or this policy           |
+| `gh` read-only (a plain GET); PR comments only via `qa:pr-feedback`                 | anyone can comment on a public repo, so outsiders are filtered out         |
+| no `git push`/`commit`/`fetch`, no network beyond localhost, no reading credentials | an injected instruction can't publish or leak                              |
+| `ui-explorer` and `manual-tester` never read `app/` (Read, Grep, Glob or the shell) | they test through the UI and API, blind to the code and its seeded defects |
 
-The hook checks every command, including ones inside pipes, `&&`, `$(…)`, `bash -c`, `xargs` and redirects, and it
-refuses any call it can't parse. It isn't a sandbox, though: an agent that writes and runs a script can do more. That's
-why the CI agent job has a read-only GitHub token, and a separate job re-checks and publishes its patch
+The hook checks every command, including ones inside pipes, `&&`, `$(…)`, `bash -c`, `xargs` and redirects. It fails
+closed: a call whose hook input it can't read, or that the policy throws on, is refused, and `"onFailure": "block"`
+(Claude Code v2.1.295+) refuses the call when the hook crashes, can't start or times out. It isn't a sandbox, though:
+it splits commands with its own reader, not a full shell parser, and an agent that writes and runs a script can do
+more. That's why the CI agent job has a read-only GitHub token, and a separate job re-checks and publishes its patch
 ([CI](ci.md#agentic-qa)).
 
 ## Headless runner
@@ -89,9 +92,9 @@ bun run agent release-gate --strict      # exit 1 on NO-GO
 
 ## Real runs
 
-| Run                                              | Result                                                                                                                                                                                                                                                                         | Cost  |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- |
-| `refine-ac CARD-142`                             | 13 questions for Product with proposed defaults, 8 Given/When/Then criteria with boundaries, and conflicts found with the free-shipping and discount-cap rules. Passed review on round 2. [Output](examples/refine-ac-CARD-142.md) · [run](examples/refine-ac-CARD-142.run.md) | $1.17 |
-| `adhoc-test "<cart and order totals>" --defects` | Haiku explorers in 5 parallel browser sessions found **all 4 planted defects**, each confirmed with an API repro and screenshots. [Notes](examples/adhoc-test-seeded-defects.md) · [run](examples/adhoc-test-seeded-defects.run.md)                                            | $0.77 |
-| `learn "<review feedback>"`                      | The full self-improvement loop: no duplicate found, gate passed, the probe ranked the lesson first, the independent curator scored it 4-5 and committed it, and its probe joined the golden set. [Walkthrough](examples/learn-review-feedback.md)                              | $0.53 |
-| `learn "<second review feedback>"`               | The gate refused a near-duplicate of `LRN-SCOPE` (0.668 similarity); the agent re-proposed it as an update, the curator accepted it, and the knowledge guard matched the file to its ledger line. [Walkthrough](examples/learn-pin-with-defect-id.md)                          | $0.68 |
+| Run                                              | Result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Cost  |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- |
+| `refine-ac CARD-142`                             | 13 questions for Product with proposed defaults, 8 Given/When/Then criteria with boundaries, and conflicts found with the free-shipping and discount-cap rules. Passed review on round 2. [Output](examples/refine-ac-CARD-142.md) · [run](examples/refine-ac-CARD-142.run.md)                                                                                                                                                                                                             | $1.17 |
+| `adhoc-test "<cart and order totals>" --defects` | A targeted run, not a blind one: the charter named the four areas the defects are planted in (cart quantity limits, coupon caps, the free-shipping threshold, restock on cancel). Haiku explorers in 5 parallel browser sessions found all 4, each confirmed with an API repro and screenshots. A blind run (a charter that doesn't name them, explorers barred from `app/`) is pending. [Notes](examples/adhoc-test-seeded-defects.md) · [run](examples/adhoc-test-seeded-defects.run.md) | $0.77 |
+| `learn "<review feedback>"`                      | The full self-improvement loop: no duplicate found, gate passed, the probe ranked the lesson first, the independent curator scored it 4-5 and committed it, and its probe joined the golden set. [Walkthrough](examples/learn-review-feedback.md)                                                                                                                                                                                                                                          | $0.53 |
+| `learn "<second review feedback>"`               | The gate refused a near-duplicate of `LRN-SCOPE` (0.668 similarity); the agent re-proposed it as an update, the curator accepted it, and the knowledge guard matched the file to its ledger line. [Walkthrough](examples/learn-pin-with-defect-id.md)                                                                                                                                                                                                                                      | $0.68 |

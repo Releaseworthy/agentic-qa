@@ -17,14 +17,14 @@ ChromaDB + Neo4j (Hybrid RAG, Python/uv) · LangSmith · ripgrep · GitHub Actio
 
 ## Proof
 
-| Claim                            | Evidence                                                                                                                                                                                                                             |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| The agents do real QA work       | Headless runs: `refine-ac` → 13 questions for Product and 8 testable criteria ($1.17); `adhoc-test` → all 4 planted defects found ($0.77); `learn` → lessons through gate and judge ($0.53, $0.68). [Runs](docs/agents.md#real-runs) |
-| The suite catches bugs           | Every seeded defect turns a test tagged with its rule from green to red: [4 of 4](docs/examples/defect-detection.md), checked on every push                                                                                          |
-| Tests are independent            | 112 API + Chromium tests (164 runs with Firefox and WebKit), fully parallel, each on data of its own                                                                                                                                 |
-| Releases are decided on evidence | Go/No-Go, traceability and the defect board, published to [GitHub Pages](https://hoanglan9569.github.io/agentic-qa/) on every push to `main`                                                                                         |
-| Retrieval quality is measured    | Vector vs graph vs hybrid on tuning, dev and held-out questions. On the 59 held-out ones, hybrid is one question ahead of vector. [Eval](docs/knowledge.md#evaluation)                                                               |
-| Agent output is checked          | A heal guard blocks weakened tests, a knowledge guard blocks uncurated vault edits, one tool policy covers every session. [How](docs/agents.md#tool-policy)                                                                          |
+| Claim                            | Evidence                                                                                                                                                                                                                                                                                      |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The agents do real QA work       | Headless runs: `refine-ac` → 13 questions for Product and 8 testable criteria ($1.17); `adhoc-test` with a charter naming the 4 planted defect areas → all 4 found ($0.77; a blind run is pending); `learn` → lessons through gate and judge ($0.53, $0.68). [Runs](docs/agents.md#real-runs) |
+| The suite catches bugs           | Every seeded defect turns a test tagged with its rule from green to red: [4 of 4](docs/examples/defect-detection.md), checked on every push                                                                                                                                                   |
+| Tests are independent            | 112 API + Chromium tests (164 runs with Firefox and WebKit), fully parallel, each on data of its own                                                                                                                                                                                          |
+| Releases are decided on evidence | Go/No-Go, traceability and the defect board, published to [GitHub Pages](https://hoanglan9569.github.io/agentic-qa/) on every push to `main`, where a NO-GO then fails the pipeline                                                                                                           |
+| Retrieval quality is measured    | Vector vs graph vs hybrid on tuning, dev and held-out questions. On the 59 held-out ones, hybrid is one question ahead of vector. [Eval](docs/knowledge.md#evaluation)                                                                                                                        |
+| Agent output is checked          | A heal guard blocks weakened tests, a knowledge guard blocks uncurated vault edits, one tool policy covers every session. [How](docs/agents.md#tool-policy)                                                                                                                                   |
 
 ## Quick start
 
@@ -38,6 +38,10 @@ bun run app              # ShopLite on http://localhost:3100 (SHOPLITE_DEFECTS=a
 ```
 
 On bash: `export STRING_HEX_SHOPLITE=b4a8856ed96c7f3dbf79c4cd155bb59f59877615922a041842d5a321009898aa`.
+
+Port 3100 taken? `BASE_URL` wins over `env/.env.dev`, and ShopLite starts on its port, so the app and the tests
+move together: `$env:BASE_URL = 'http://localhost:3110'` in PowerShell, `export BASE_URL=http://localhost:3110` on
+bash.
 
 > **About `STRING_HEX_SHOPLITE`:** the saved test accounts in `env/` are committed only as encrypted `enc1.…`
 > tokens, and this key decrypts them. It is public because the accounts belong to a demo shop on your machine; a

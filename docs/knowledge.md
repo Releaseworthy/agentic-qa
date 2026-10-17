@@ -18,7 +18,9 @@ rules, work-item cards, defects, manual test cases, review learnings and the gen
 
 ### Evaluation
 
-`bun run rag:eval` scores the three modes on three question sets, and CI fails if hybrid regresses:
+`bun run rag:eval` scores the three modes on three question sets. CI fails when, on the tuning set, hybrid's hit@5
+drops below 0.9, its MRR below 0.8 or below vector-only's, or when held-out hybrid hit@5 drops below 0.85. Dev and
+held-out MRR are reported, not enforced:
 
 | Set                                   | Used for                                              | Questions |
 | ------------------------------------- | ----------------------------------------------------- | --------- |
@@ -32,8 +34,11 @@ rules, work-item cards, defects, manual test cases, review learnings and the gen
 | graph  | 0.393 · 0.607 · 0.500       | 0.417 · 0.667 · 0.521     | 0.322 · 0.576 · 0.426         |
 | hybrid | **0.714 · 1.0 · 0.851**     | 0.792 · **0.958 · 0.858** | **0.763 · 0.983 · 0.860**     |
 
-On questions it was never tuned on, hybrid is only one question ahead of vector-only (hit@1 0.763 vs 0.746), which is within noise at this size. The graph earns its
-place in `related()` walks (a feature → its rules, code, specs, defects) and id lookups rather than in the ranking.
+On questions it was never tuned on, hybrid is only one question ahead of vector-only (hit@1 0.763 vs 0.746), which is
+within noise at this size, and the graph's share of it is small: with every graph edge removed, held-out MRR moves
+from 0.860 to 0.856 (hit@1 back to 0.746) and dev doesn't move (ablation run on 2026-10-18). An id the query names is
+found by a regex (`ID` in `rag/hybrid.py`), not by the graph. The graph earns its place in `related()` walks (a
+feature → its rules, code, specs, defects) and in the related documents each search result lists.
 An earlier 14-question held-out set had hybrid clearly behind (0.738 vs 0.845 MRR). At that size one question
 moves MRR by ~0.07, so the set was grown to 59.
 

@@ -9,12 +9,15 @@
  *   Shell                      no pushes, commits, fetches or remotes; gh read-only (plain GET; PR feedback only through
  *                              `bun run qa:pr-feedback`, which drops comments from outside the repo's members);
  *                              curl/wget only to localhost; no reading the credentials in the environment
+ *   Black-box agents           ui-explorer and manual-tester test through the UI and the API: they never read app/
+ *                              (Read, Grep, Glob, or a shell command naming it or searching a folder that holds it)
  *
  * The shell rules narrow what an agent does by accident or under prompt injection. They are not a sandbox (an agent
  * that writes and runs a script can get around them), so CI also gives the agent job a read-only token, and the job that
  * publishes the agent's patch checks it again (qa/heal-guard.ts, qa/knowledge-guard.ts).
  */
 
+import { statSync } from 'node:fs';
 import { isAbsolute, join, relative, resolve } from 'node:path';
 
 const ROOT = join(import.meta.dir, '..');
@@ -68,6 +71,86 @@ export function redirectTargets(command: string): string[] {
     if (target) targets.push(target[1] ?? target[2] ?? target[3] ?? '');
   }
   return targets.filter((t) => t !== '' && !/^\/dev\/(null|stdout|stderr)$/.test(t));
+}
+
+// ---- black-box agents -----------------------------------------------------------------------------------------
+
+/** Subagents that test ShopLite from the outside. Its code would tell them where the seeded defects are. */
+const BLACK_BOX = new Set(['ui-explorer', 'manual-tester']);
+const APP = join(ROOT, 'app');
+const APP_RULE =
+  'tests ShopLite through its UI and API only, so app/ (its code and seeded defects) is not for it to read';
+
+const isBlackBox = (caller: Caller) => caller.agentType !== undefined && BLACK_BOX.has(caller.agentType);
+
+/** `path` is `dir` or inside it. */
+function within(dir: string, path: string): boolean {
+  const rel = relative(dir, path);
+  return rel === '' || (!/^\.\.(?:[\\/]|$)/.test(rel) && !isAbsolute(rel));
+}
+
+/** A search from `root` reads app/: the root is app/, a folder in it, or a folder that holds it. */
+const reachesApp = (root: string) => within(APP, root) || within(root, APP);
+
+const isDir = (path: string) => {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+};
+
+/** Read, Grep and Glob by a black-box agent: nothing in app/, and no search from a folder that holds it. */
+export function appReadDenial(tool: string, fields: Record<string, unknown>, caller: Caller = {}): string | undefined {
+  if (!isBlackBox(caller)) return undefined;
+  const cwd = caller.cwd ?? ROOT;
+  const who = caller.agentType ?? '';
+  if (tool === 'Read' && typeof fields.file_path === 'string' && within(APP, resolve(cwd, fields.file_path)))
+    return `${fields.file_path}: ${who} ${APP_RULE}`;
+  if (tool === 'Grep' || tool === 'Glob') {
+    const root = resolve(cwd, typeof fields.path === 'string' ? fields.path : '.');
+    if (reachesApp(root))
+      return `${tool} in ${relative(ROOT, root).replaceAll('\\', '/') || 'the repo root'} reaches app/: ${who} ${APP_RULE}. Search a folder outside it`;
+  }
+  return undefined;
+}
+
+/** Commands that print, copy or list the files and folders they name. */
+const READERS = new Set([
+  ...['cat', 'head', 'tail', 'less', 'more', 'tac', 'nl', 'sed', 'awk', 'cut', 'sort', 'uniq', 'strings', 'base64'],
+  ...['od', 'xxd', 'hexdump', 'diff', 'cmp', 'cp', 'ls', 'cd', 'pushd', 'git'],
+  ...['grep', 'egrep', 'fgrep', 'rg', 'ag', 'ack', 'find', 'tree'],
+]);
+/** Commands that search a whole folder: the current one when they name none. */
+const SEARCHERS = new Set(['rg', 'ag', 'ack', 'find', 'tree']);
+const GREP_RECURSIVE = /^(?:-[a-zA-Z]*[rR][a-zA-Z]*|--recursive|--dereference-recursive|--directories=recurse)$/;
+
+/**
+ * A shell command by a black-box agent: no word may name a path in app/ (`cat app/defects.ts`,
+ * `git show HEAD:app/x.ts`), a reader may not name app/ at all (`ls app`, `cd app`), and a tree search (grep -r, rg,
+ * find, git grep …) may not start from a folder that holds app/, which is the current one when it names no folder.
+ */
+function appShellDenial(name: string, args: string[], caller: Caller): string | undefined {
+  // A wrapper (xargs, timeout, nice …) is judged by the reader it runs.
+  const run = WRAPPERS.has(name) ? args.findIndex((a) => READERS.has(binName(a))) : -1;
+  if (run >= 0) return appShellDenial(binName(args[run] ?? ''), args.slice(run + 1), caller);
+  const cwd = caller.cwd ?? ROOT;
+  const why = `${caller.agentType ?? ''} ${APP_RULE}`;
+  // `HEAD:app/x.ts` and `--file=app/x.ts` name app/x.ts.
+  const at = (word: string) => resolve(cwd, word.replace(/^--?[\w-]+=/, '').replace(/^[^\\/:]+:(?![\\/])/, ''));
+  // grep, rg, ag, ack: the first word is the pattern, unless -e or -f gives it.
+  const patternFirst =
+    /^(?:[ef]?grep|rg|ag|ack)$/.test(name) && !args.some((a) => /^(?:-[a-zA-Z]*[ef]|--regexp|--file)(?:=|$)/.test(a));
+  const named = args.filter((a) => !a.startsWith('-')).slice(patternFirst ? 1 : 0);
+  const inApp = named.find((w) => (READERS.has(name) || /[\\/]/.test(w)) && within(APP, at(w)));
+  if (inApp !== undefined) return `\`${name} … ${inApp}\`: ${why}`;
+  const gitGrep = name === 'git' && args.find((a) => !a.startsWith('-')) === 'grep';
+  if (SEARCHERS.has(name) || gitGrep || (/^[ef]?grep$/.test(name) && args.some((a) => GREP_RECURSIVE.test(a)))) {
+    const folders = named.map(at).filter(isDir);
+    if ((folders.length ? folders : [resolve(cwd)]).some(reachesApp))
+      return `\`${name}\` searches a folder that holds app/: ${why}. Name a folder outside it`;
+  }
+  return undefined;
 }
 
 // ---- shell ----------------------------------------------------------------------------------------------------
@@ -243,6 +326,10 @@ function simpleDenial(command: string, caller: Caller): string | undefined {
   }
   const [bin = '', ...args] = words(command);
   const name = binName(bin);
+  if (isBlackBox(caller)) {
+    const why = appShellDenial(name, args, caller);
+    if (why) return why;
+  }
   if (name === 'eval') return bashDenial(args.join(' '), caller);
   if (WRAPPERS.has(name)) {
     const at = args.findIndex((a) => CHECKED.has(binName(a)) || FILE_WRITERS.has(binName(a)));
@@ -299,6 +386,8 @@ export function denial(tool: string, input: unknown, caller: Caller = {}): strin
   if (writer && caller.agentType !== writer)
     return `${tool.replace('mcp__knowledge__', '')} is reserved for the ${writer} subagent. Hand the work to it`;
   const fields = typeof input === 'object' && input !== null ? (input as Record<string, unknown>) : {};
+  const read = appReadDenial(tool, fields, caller);
+  if (read) return read;
   const fileKey = FILE_TOOLS[tool];
   if (fileKey) {
     const path = fields[fileKey];
