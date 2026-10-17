@@ -39,6 +39,10 @@ bun run app              # ShopLite on http://localhost:3100 (SHOPLITE_DEFECTS=a
 
 On bash: `export STRING_HEX_SHOPLITE=b4a8856ed96c7f3dbf79c4cd155bb59f59877615922a041842d5a321009898aa`.
 
+Port 3100 taken? `BASE_URL` wins over `env/.env.dev`, and ShopLite starts on its port, so the app and the tests
+move together: `$env:BASE_URL = 'http://localhost:3110'` in PowerShell, `export BASE_URL=http://localhost:3110` on
+bash.
+
 > **About `STRING_HEX_SHOPLITE`:** the saved test accounts in `env/` are committed only as encrypted `enc1.…`
 > tokens, and this key decrypts them. It is public because the accounts belong to a demo shop on your machine; a
 > real project keeps it in a secret store, as CI does.
