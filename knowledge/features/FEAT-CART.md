@@ -23,7 +23,7 @@ sign in when they add to the cart.
 - Remove (`DELETE …/:productId`): `404 NOT_IN_CART` when the product is not there.
 - Every answer is the whole priced cart: `items`, `couponCode`, `subtotalCents`,
   `discountCents`, `shippingCents`, `totalCents`.
-- Limits: [[BR-CART-01]] (1–10 per line) and [[BR-CART-02]] (never more than stock).
+- Limits: [[BR-CART-01]] (1-10 per line) and [[BR-CART-02]] (never more than stock).
   Stock is **not** reserved by the cart; it is checked again at checkout ([[FEAT-CHECKOUT]]).
 - Changing the cart re-checks the coupon minimum ([[BR-COUP-02]]).
 - UI: the header cart count is the sum of quantities; quantity inputs re-price on
@@ -33,5 +33,5 @@ sign in when they add to the cart.
 
 - Two customers can hold the last units in their carts at the same time; only the
   first to check out gets them (covered by the "last units in stock" journey).
-- Quantity changes go through PATCH, a separate code path from add — limits must
+- Quantity changes go through PATCH, a separate code path from add, so limits must
   be enforced on both.

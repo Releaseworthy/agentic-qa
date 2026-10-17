@@ -1,6 +1,6 @@
 /**
  * The code graph: every TypeScript file in scope, its imports (resolved through
- * tsconfig path aliases) and the symbols it defines — exported functions,
+ * tsconfig path aliases) and the symbols it defines: exported functions,
  * classes, types, and the methods of exported classes (page-object actions,
  * API helpers).
  */
@@ -20,7 +20,7 @@ export type CodeSymbol = {
   kind: SymbolKind;
   file: string;
   line: number;
-  /** The declaration line, trimmed — enough to see the signature. */
+  /** The declaration line, trimmed. Enough to see the signature. */
   signature: string;
   /** For methods: the class they belong to. */
   owner?: string;
@@ -118,8 +118,8 @@ function scan(): { paths: string[]; stamp: string } {
 }
 
 /**
- * The index of every .ts file in SCOPE. Cached, and rebuilt whenever a file was added, removed or changed since — the
- * codesearch MCP server lives as long as an agent session, which writes page objects and helpers as it goes.
+ * The index of every .ts file in SCOPE. Cached, and rebuilt whenever a file was added, removed or changed since. The
+ * codesearch MCP server lives as long as an agent session, and the agent writes page objects and helpers as it goes.
  */
 export function codeIndex({ fresh = false } = {}): CodeIndex {
   const { paths, stamp } = scan();

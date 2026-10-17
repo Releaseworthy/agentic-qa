@@ -1,6 +1,6 @@
 /**
  * Human feedback on a pull request for the `learn` workflow: reviews, review comments (with path and line) and
- * conversation comments — only from the repository's owner, members and collaborators. Anyone can comment on a
+ * conversation comments, only from the repository's owner, members and collaborators. Anyone can comment on a
  * public repo; an outsider's comment must never become an agent's instruction or a lesson.
  *
  *   bun run qa:pr-feedback <PR number> [--repo owner/name]     → JSON on stdout, out/pr-feedback/<n>.json

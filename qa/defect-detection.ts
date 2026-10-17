@@ -102,7 +102,7 @@ if (import.meta.main) {
   });
   const ids = (values.only ? values.only.split(',') : Object.keys(DEFECTS)) as DefectId[];
   for (const id of ids) if (!(id in DEFECTS)) throw new Error(`unknown defect ${id}`);
-  let port = 3400; // clear of the dev/staging/live stand-ins on 3100–3300
+  let port = 3400; // clear of the dev/staging/live stand-ins on 3100-3300
   console.error('▶ baseline (no defect) …');
   const baseline = await runSuite('none', port++, values.project, 'baseline');
   const baselineFailures = baseline.filter((t) => t.status === 'unexpected');
@@ -124,7 +124,7 @@ if (import.meta.main) {
         o.defect,
         o.rule,
         o.verdict === 'killed' ? '✅ killed' : '❌ survived',
-        o.caughtBy.slice(0, 3).join('<br>') || '—',
+        o.caughtBy.slice(0, 3).join('<br>') || '-',
         o.otherFailures,
       ]),
     ),

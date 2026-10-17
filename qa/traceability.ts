@@ -18,7 +18,7 @@ export type TraceRow = {
   id: string;
   kind: 'feature' | 'rule';
   title: string;
-  /** Criticality (features, 1–5) or severity (rules). */
+  /** Criticality (features, 1-5) or severity (rules). */
   weight: string;
   tests: number;
   passing: number;
@@ -35,7 +35,7 @@ export type TraceRow = {
 
 export type Traceability = {
   rows: TraceRow[];
-  /** Rules nothing verifies — no automated test and no passing manual run. */
+  /** Rules nothing verifies: no automated test and no passing manual run. */
   untestedRules: string[];
   /** Rules only a manual run verifies. */
   manualOnlyRules: string[];
@@ -99,8 +99,8 @@ export function toMarkdown(t: Traceability, fromRun: boolean): string {
     r.title,
     r.weight,
     fromRun ? `${r.passing}/${r.tests - r.notRun}${r.notRun ? ` (+${r.notRun} not run)` : ''}` : r.tests,
-    r.manual.length ? `${r.manual.join(', ')} (${r.manualResult})` : '—',
-    r.defects.join(', ') || '—',
+    r.manual.length ? `${r.manual.join(', ')} (${r.manualResult})` : '-',
+    r.defects.join(', ') || '-',
   ]);
   return [
     '## Traceability',

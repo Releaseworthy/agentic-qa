@@ -5,7 +5,7 @@
  *   bunx playwright test --grep "<suspects>" --repeat-each=10 --retries=0 --workers=4
  *   bun run qa:flaky [--results out/results.json]
  *
- * stable: never failed · flaky: failed some runs · broken: failed every run (not flaky — a real failure).
+ * stable: never failed · flaky: failed some runs · broken: failed every run (a real failure, so not flaky).
  */
 
 import { parseArgs } from 'node:util';
@@ -65,7 +65,7 @@ export function toMarkdown(rows: Stability[]): string {
             `${r.failures}/${r.runs}`,
             `${(r.rate * 100).toFixed(0)} %`,
             r.verdict,
-            r.errors.join('<br>') || '—',
+            r.errors.join('<br>') || '-',
           ]),
         )
       : '✅ Every test passed every run.',

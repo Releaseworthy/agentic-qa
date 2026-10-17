@@ -2,7 +2,7 @@ import { DateFormat, formatDate, now, shift } from '@utils/date';
 
 export type Card = { cardNumber: string; expiry: string; cvc: string };
 
-/** MM/YY, `months` from now — expiries move with the calendar, so no test card ever goes stale. */
+/** MM/YY, `months` from now. Expiries move with the calendar so the test cards don't go stale. */
 function expiry(months: number): string {
   return formatDate(shift(now(), { months }), DateFormat.CARD_EXPIRY);
 }

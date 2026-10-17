@@ -1,6 +1,6 @@
 /**
- * Headless runner: starts one agentic QA workflow with the Claude Agent SDK —
- * the same skills, subagents, rules and MCP servers Claude Code uses
+ * Headless runner: starts one agentic QA workflow with the Claude Agent SDK,
+ * using the same skills, subagents, rules and MCP servers Claude Code uses
  * interactively, loaded from the project (`.claude/`, `CLAUDE.md`, `.mcp.json`).
  *
  *   bun run agent <workflow> [args…] [--budget <usd>] [--model <id>] [--max-turns <n>] [--strict]
@@ -17,7 +17,7 @@
  * per-model usage) and summary.md (also appended to the GitHub job summary).
  *
  * Model routing: the orchestrating skill runs on --model (default opus); each
- * subagent runs on the model its definition names (.claude/agents/*.md) —
+ * subagent runs on the model its definition names  (.claude/agents/*.md):
  * haiku for vault lookups, code search and browser exploration, opus for
  * authoring and review.
  */
@@ -36,7 +36,7 @@ const ROOT = join(import.meta.dir, '..');
  * Pre-approved tools; anything else is denied. The shell commands are the project's own allow list
  * (.claude/settings.json), so interactive and headless sessions pre-approve the same ones. The project's PreToolUse
  * hook (agents/tool-policy.ts) narrows them further: knowledge writes by role, the vault only through the knowledge
- * MCP, a read-only gh, no pushes, no network beyond localhost, and — in a headless run — file writes only under
+ * MCP, a read-only gh, no pushes, no network beyond localhost, and (in a headless run) file writes only under
  * tests/, framework/ and out/. Agents write and run code (specs, repro scripts), so this is not a sandbox: CI runs
  * the agent with a read-only GitHub token and opens the PR in a separate job.
  */
@@ -110,8 +110,8 @@ const transcript = join(dir, 'transcript.jsonl');
 
 const options: Options = {
   cwd: ROOT,
-  // CLAUDE.md, .claude/skills, .claude/agents and .claude/settings.json (with the tool-policy hook) from the repo —
-  // not the machine's user settings.
+  // CLAUDE.md, .claude/skills, .claude/agents and .claude/settings.json (with the tool-policy hook) come from the repo.
+  // The machine's user settings are ignored.
   settingSources: ['project'],
   // Marks the session as headless for the tool-policy hook: file writes only under tests/, framework/ and out/.
   env: { ...process.env, AGENTIC_QA_RUN: runId },
@@ -127,7 +127,7 @@ const options: Options = {
     knowledge: { type: 'stdio', command: 'uv', args: ['run', '--quiet', 'python', '-m', 'rag.server'] },
     codesearch: { type: 'stdio', command: process.execPath, args: ['run', 'codesearch/mcp.ts'] },
   },
-  // Only the servers above — not connectors the machine's Claude login happens to have.
+  // Use only the servers above. Connectors from the machine's Claude login stay out.
   strictMcpConfig: true,
   outputFormat: { type: 'json_schema', schema: RESULT_SCHEMA },
   stderr: (data) => {
@@ -176,7 +176,7 @@ for await (const message of query({ prompt, options })) {
 }
 
 if (!result) {
-  console.error('The run ended without a result message — see stderr.log');
+  console.error('The run ended without a result message, check stderr.log');
   process.exit(1);
 }
 
@@ -223,7 +223,7 @@ const summary = [
     ? `\nKnowledge: ${structured.knowledge.map((k) => `${k.id} ${k.decision}${k.why ? ` (${k.why})` : ''}`).join(' · ')}`
     : '',
   // One line per document, read back by the heal guard in CI (Intended-change: <id>).
-  ...(structured?.intended ?? []).map((i) => `\nIntended-change: ${i.doc} — ${i.why}`),
+  ...(structured?.intended ?? []).map((i) => `\nIntended-change: ${i.doc}: ${i.why}`),
   '',
   `<sub>Models: ${models}</sub>`,
 ].join('\n');

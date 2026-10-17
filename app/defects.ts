@@ -1,6 +1,6 @@
 /**
  * Seeded defects: known bugs that can be switched on to prove the test suite
- * (and the agents) catch them — a small mutation-testing harness.
+ * (and the agents) catch them. Basically a small mutation-testing harness.
  *
  *   SHOPLITE_DEFECTS=all                      every defect
  *   SHOPLITE_DEFECTS=free-shipping-boundary   a comma-separated list

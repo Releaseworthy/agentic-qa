@@ -60,7 +60,7 @@ export function flatten(report: PlaywrightJson): TestRecord[] {
 }
 
 export function readResults(path = join(ROOT, 'out', 'results.json')): TestRecord[] {
-  if (!existsSync(path)) throw new Error(`no test results at ${path} — run the tests first (bun run test)`);
+  if (!existsSync(path)) throw new Error(`no test results at ${path}. Run the tests first (bun run test)`);
   return flatten(JSON.parse(readFileSync(path, 'utf8')) as PlaywrightJson);
 }
 

@@ -1,7 +1,7 @@
 # Retrieval golden set: a question a QA engineer or an agent asks, and the
 # documents that answer it (any of `expected` in the top k counts as a hit;
 # the first listed is the best answer). `facts` are what a correct answer must
-# say — used by `rag.eval --answers`.
+# say, used by `rag.eval --answers`.
 
 - q: Is shipping free on an order of exactly fifty dollars?
   expected: [BR-SHIP-01]

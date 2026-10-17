@@ -5,7 +5,7 @@ import { getProduct } from '@app/domain/catalog';
 import { checkCoupon, findCoupon } from '@app/domain/coupons';
 import { priceLines, type Totals } from '@app/domain/pricing';
 
-/** BR-CART-01: 1–10 units per cart line. */
+/** BR-CART-01: 1-10 units per cart line. */
 export const MAX_QTY_PER_LINE = 10;
 
 export type CartView = Totals & {

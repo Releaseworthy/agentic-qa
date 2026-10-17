@@ -1,6 +1,6 @@
 ---
 name: refine-ac
-description: Acceptance-criteria refinement for a work-item card before development — grounds the draft AC in the vault's business rules, finds ambiguities, conflicts with existing rules, missing edge cases and negative paths, and produces testable Given/When/Then criteria plus the questions Product and Engineering must answer. Invoke as /refine-ac <CARD-id>.
+description: Acceptance-criteria refinement for a work-item card before development. Grounds the draft AC in the vault's business rules, finds ambiguities, conflicts with existing rules, missing edge cases and negative paths, and produces testable Given/When/Then criteria plus the questions Product and Engineering must answer. Invoke as /refine-ac <CARD-id>.
 argument-hint: "<CARD-id>"
 ---
 
@@ -16,12 +16,12 @@ Read `.claude/rules/orchestration.md` first.
    - Missing: limits, boundaries, empty/maximum input, validation messages, error codes, permissions, interaction with coupons/shipping/stock/cancellation, UI states, API contract, accessibility.
    - Testability: each criterion must have an observable outcome.
 4. **Write** `out/ac/<CARD-id>.md`:
-   - Questions for Product / Engineering — numbered, each with why it matters and a proposed default.
-   - Refined AC — Given/When/Then, each with its negative path, exact values; mark which rely on a proposed default.
+   - Questions for Product / Engineering, numbered, each with why it matters and a proposed default.
+   - Refined AC in Given/When/Then, each with its negative path and exact values; mark which ones rely on a proposed default.
    - Impact on existing rules and tests (ids), proposed new rule documents.
    - Test ideas: API (endpoint + journey) and UI, by priority.
 5. **Review:** `test-reviewer` (target: AC). Apply revisions (≤ 2 rounds).
-6. Do **not** edit the card itself — Product owns it. Offer the refined AC for them to paste, or file it with `propose_knowledge` (`type: card`, `kind: update`): the gate routes it to Product.
+6. Do **not** edit the card itself, because Product owns it. Offer the refined AC for them to paste, or file it with `propose_knowledge` (`type: card`, `kind: update`): the gate routes it to Product.
 7. **Reflect: `.claude/rules/self-improve.md`.**
 
 Final response: the output path, the open questions, the refined AC count, conflicts found.

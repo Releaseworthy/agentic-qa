@@ -9,8 +9,8 @@
  *                                        sha of the file's exact content (an edit after the judge's verdict fails)
  *   knowledge/_curation/proposals/       only for a `needs-human` ledger line of this diff
  *   rag/golden.learned.yaml              probes added by accepted lines, removed by accepted deprecations
- *   knowledge/test-cases/, defects/      QA artifacts written with upsert_document — `qa:vault` checks them
- *   knowledge/setup/SETUP-RECIPES.md     generated — `qa:arrange --check` proves it matches the code
+ *   knowledge/test-cases/, defects/      QA artifacts written with upsert_document, checked by `qa:vault`
+ *   knowledge/setup/SETUP-RECIPES.md     generated; `qa:arrange --check` proves it matches the code
  *   anything else, and every deletion    never from an agent: rules, cards and the overview are Product's
  *
  * Runs in the agent's job, again in the job that publishes its patch, and in CI, where it blocks agentic/* branches
@@ -139,14 +139,14 @@ export function guard(changes: FileChange[]): GuardFinding[] {
     }
     if (!c.path.startsWith('knowledge/')) continue;
     if (c.after === undefined) {
-      add(c.path, false, 'deleted — vault documents are deprecated, never removed by an agent');
+      add(c.path, false, 'deleted: an agent deprecates vault documents and never removes them');
       continue;
     }
     const folder = c.path.split('/')[1] ?? '';
     if (folder === 'test-cases' || folder === 'defects')
-      add(c.path, true, 'QA artifact (upsert_document) — qa:vault checks it');
+      add(c.path, true, 'QA artifact (upsert_document), checked by qa:vault');
     else if (c.path === 'knowledge/setup/SETUP-RECIPES.md')
-      add(c.path, true, 'generated from framework/setup/recipes.ts — qa:arrange --check proves it');
+      add(c.path, true, 'generated from framework/setup/recipes.ts, qa:arrange --check proves it');
     else if (c.path.startsWith(PROPOSALS)) {
       const id = basename(c.path, '.md');
       const filed = ledger.decisions.some((d) => d.id === id && d.decision === 'needs-human');
@@ -164,7 +164,7 @@ export function guard(changes: FileChange[]): GuardFinding[] {
         Boolean(by),
         by
           ? `accepted by ${by.id} (sha ${sha})`
-          : `no accepted ledger decision in this diff matches ${id ?? 'it'} at sha ${sha} — it skipped the gate and the judge`,
+          : `no accepted ledger decision in this diff matches ${id ?? 'it'} at sha ${sha}, so it skipped the gate and the judge`,
       );
     } else add(c.path, false, `${folder || c.path} is Product's: a human edits it; an agent files propose_knowledge`);
   }
@@ -199,7 +199,7 @@ if (import.meta.main) {
   const findings = guard(changes);
   const blocked = findings.filter((f) => !f.allowed);
   const md = [
-    `## Knowledge guard — ${blocked.length ? `BLOCKED (${blocked.length})` : 'OK'}`,
+    `## Knowledge guard: ${blocked.length ? `BLOCKED (${blocked.length})` : 'OK'}`,
     '',
     `Base \`${base}\` · ${changes.length} changed file(s) in knowledge/ and the learned probes.`,
     '',

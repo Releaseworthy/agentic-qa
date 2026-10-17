@@ -1,7 +1,7 @@
 /**
  * The agentic QA workflows the headless runner can start. Each one is a project
- * skill (`.claude/skills/<skill>/SKILL.md`) — the same workflow a QA engineer
- * runs interactively in Claude Code — plus the limits it runs under in CI.
+ * skill (`.claude/skills/<skill>/SKILL.md`), the same one a QA engineer
+ * runs interactively in Claude Code, plus the limits it runs under in CI.
  */
 
 import { z } from 'zod';

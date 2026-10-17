@@ -9,15 +9,16 @@
  *   weakened     an assertion lost strength (exact value → partial → presence)    never allowed
  *   suppressed   skip / fixme / only / slow (also at runtime), a test.fail that
  *                doesn't pin an open DEF- the file tags, hard waits, timeouts,
- *                retries, configure(), toPass() — each occurrence, not a count     never allowed
+ *                retries, configure(), toPass(); every occurrence counts          never allowed
  *   expected     an assertion's expected value, a `not`, or a test title changed  only with intended-change evidence
  *   data         a literal the test arranges with (price, quantity, code)         only with intended-change evidence
  *   contract     an API schema changed (framework/api/schemas.ts)                 only with intended-change evidence
- *   maintenance  a locator or subject renamed, page objects, helpers, recipes    allowed — listed
+ *   maintenance  a locator or subject renamed, page objects, helpers, recipes    allowed, listed
  *
  * Intended-change evidence is a rule, feature, card or overview that states the new behaviour, already on the base
- * branch, unchanged in this diff, and changed there after the test file was — Product updated it first. Or a human's
- * confirmation, quoted with --human. A diff of app/ is never evidence: the code changing is exactly what a bug looks like.
+ * branch, unchanged in this diff, and changed there after the test file was (Product updated it first). Or a human's
+ * confirmation, quoted with --human. A diff of app/ is never evidence,
+ * since a code change is also what a bug looks like.
  */
 
 import { spawnSync } from 'node:child_process';
@@ -38,7 +39,7 @@ const EVIDENCE_TYPES: ReadonlySet<string> = new Set(['rule', 'feature', 'card', 
 
 const SCHEMAS = 'framework/api/schemas.ts';
 const LOOSENING_FILES = ['playwright.config.ts', 'framework/config/timeouts.ts'];
-/** Product tests and the framework they stand on — not tests/unit (the QA engines' own tests). */
+/** Product tests and the framework they stand on. Excludes tests/unit (the QA engines' own tests). */
 const IN_SCOPE = /^(tests\/(?:api|ui)\/.*\.ts|framework\/.*\.ts|playwright\.config\.ts)$/;
 
 // ---- reading assertions ---------------------------------------------------------------------------------
@@ -239,7 +240,7 @@ const SUPPRESSIONS: [RegExp, string][] = [
 ];
 
 /**
- * Each occurrence as written — the whole call, or the `key: value` — so a suppression moved to another test, or
+ * Each occurrence as written (the whole call, or the `key: value`), so a suppression moved to another test, or
  * a timeout raised from one value to another, counts as a new one.
  */
 function occurrences(s: string, re: RegExp): string[] {
@@ -296,7 +297,11 @@ export function classify(change: Change, openDefects: ReadonlySet<string>): Omit
   if (normalize(before) === normalize(after)) return [];
   if (LOOSENING_FILES.includes(path))
     return [
-      { file: path, kind: 'suppressed', detail: 'timeouts / retries / config changed — never a fix for a failure' },
+      {
+        file: path,
+        kind: 'suppressed',
+        detail: 'timeouts / retries / config changed, never a fix for a failure',
+      },
     ];
   if (path === SCHEMAS) return [{ file: path, kind: 'contract', detail: 'an API response schema changed' }];
 
@@ -424,14 +429,14 @@ if (import.meta.main) {
     const why = !doc
       ? 'not in the vault'
       : !EVIDENCE_TYPES.has(doc.type)
-        ? `a ${doc.type} — only a rule, feature, card or overview documents behaviour`
+        ? `a ${doc.type}: only a rule, feature, card or overview documents behaviour`
         : !git(['cat-file', '-e', `${base}:${doc.path}`]).ok
-          ? `not on ${base} — Product's documents land on the base branch first`
+          ? `not on ${base}. Product's documents land on the base branch first`
           : !git(['diff', '--quiet', base, '--', doc.path]).ok
-            ? 'changed in this diff — a behaviour change goes to a human (needs_human proposal), not along with the test'
+            ? 'changed in this diff. A behaviour change goes to a human (needs_human proposal) instead of shipping with the test'
             : '';
     if (doc && !why) valid.push(doc);
-    notes.push(`${id}: ${why || 'a valid document — it covers a file only if it changed after that file did'}`);
+    notes.push(`${id}: ${why || 'a valid document; it covers a file only if it changed after that file did'}`);
   }
 
   const evidenceFor = (file: string): string | undefined => {
@@ -446,7 +451,7 @@ if (import.meta.main) {
   const findings = review(changes, openDefects, evidenceFor);
   const blocked = findings.filter((f) => !f.allowed);
   const md = [
-    `## Heal guard — ${blocked.length ? `BLOCKED (${blocked.length})` : 'OK'}`,
+    `## Heal guard: ${blocked.length ? `BLOCKED (${blocked.length})` : 'OK'}`,
     '',
     `Base \`${base}\` · ${changes.length} changed file(s) in tests/ and framework/.`,
     ...(notes.length ? ['', 'Intended-change evidence:', ...notes.map((n) => `- ${n}`)] : []),
@@ -461,7 +466,7 @@ if (import.meta.main) {
     '',
     blocked.length
       ? 'A blocked change hides a failure or changes expected behaviour without proof it was intended. Revert it; ' +
-        'classify the failure (`.claude/rules/failure-triage.md`) — a product bug is reported, not healed.'
+        'classify the failure (`.claude/rules/failure-triage.md`). A product bug gets reported instead of healed.'
       : '',
   ].join('\n');
   writeReport('heal-guard', { base, intended: notes, findings }, md);

@@ -6,7 +6,7 @@ feature: FEAT-AUTH
 severity: high
 ---
 
-# BR-AUTH-02 — Lockout after five failed sign-ins
+# BR-AUTH-02: Lockout after five failed sign-ins
 
 **Five failed sign-ins in a row lock the account for 15 minutes.** While locked,
 even the right password answers `423 ACCOUNT_LOCKED` ("Too many failed attempts.

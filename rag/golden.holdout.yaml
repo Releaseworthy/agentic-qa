@@ -1,7 +1,7 @@
 # Held-out retrieval questions: never used to tune or choose anything. The first 14 were written after the ranking
 # priors (DERIVED_WEIGHT in rag/hybrid.py) were tuned on rag/golden.yaml; the rest on 2026-10-17, before any of them
 # was run. `bun run rag:eval` reports them separately, so the headline numbers are not only in-sample. Add questions
-# here; never change the ranking to make one of these pass — choose changes on rag/golden.dev.yaml.
+# here; never change the ranking to make one of these pass. Choose changes on rag/golden.dev.yaml.
 
 - q: If my card expires at the end of this month, can I still pay with it?
   expected: [BR-PAY-01]
@@ -58,7 +58,7 @@
 - q: Can a cart line be set to zero units, and what happens then?
   expected: [BR-CART-01, FEAT-CART]
   facts: ['removes the line']
-- q: I have 6 of an item in my cart and add 5 more — what happens?
+- q: I have 6 of an item in my cart and add 5 more. What happens?
   expected: [BR-CART-01]
   facts: ['422']
 - q: What message does a shopper see when asking for more units than are in stock?
@@ -100,7 +100,7 @@
 - q: Does an empty cart pay shipping?
   expected: [BR-SHIP-01]
   facts: ['no shipping']
-- q: A 52 dollar cart with WELCOME10 applied — does it ship free?
+- q: A 52 dollar cart with WELCOME10 applied. Does it ship free?
   expected: [BR-SHIP-01]
   facts: ['46.80']
 - q: How long is a sign-in token valid?

@@ -1,5 +1,5 @@
 /**
- * Validates the vault's frontmatter — the fields the QA engines rank and gate on. A typo here doesn't fail loudly
+ * Validates the vault's frontmatter, i.e. the fields the QA engines rank and gate on. A typo here doesn't fail loudly
  * anywhere else: `severity: High` would silently stop a critical defect from blocking the release.
  *
  *   bun run qa:vault        exit 1 with one line per problem

@@ -15,7 +15,7 @@ export function publicUser(u: User): PublicUser {
   return { id: u.id, email: u.email, name: u.name, role: u.role };
 }
 
-/** BR-AUTH-01: 8–64 characters with at least one letter and one digit. */
+/** BR-AUTH-01: 8-64 characters with at least one letter and one digit. */
 export function checkPassword(password: string): void {
   if (password.length < 8 || password.length > 64 || !/[A-Za-z]/.test(password) || !/\d/.test(password))
     throw new HttpError(400, 'WEAK_PASSWORD', 'Password needs 8-64 characters, with a letter and a digit');

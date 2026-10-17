@@ -7,14 +7,14 @@
  *
  * Changed files → impacted features, through three paths:
  *   1. a feature card lists the file in `code:` (direct, weight 1.0);
- *   2. the file is imported — up to 3 hops — by a feature's code (weight 0.6, 0.4, 0.3);
+ *   2. the file is imported by a feature's code, up to 3 hops away (weight 0.6, 0.4, 0.3);
  *   3. a vault document changed: a rule → its feature, a feature card → itself.
  * Framework and spec changes select the specs that import them. Global files
  * (server bootstrap, store, admin and test-hook routes, config, lockfile) select
- * everything, and so does product code no feature card maps — unknown impact
- * runs the whole suite instead of none of it.
+ * everything, and so does product code no feature card maps. When the impact is unknown we
+ * run the whole suite rather than none of it.
  *
- * Risk per feature = criticality (1–5) × impact weight × change-size factor ×
+ * Risk per feature = criticality (1-5) × impact weight × change-size factor ×
  * (1 + 0.5 per open defect). Output: out/impact.{json,md}, plus the Playwright
  * `--grep` that runs exactly the impacted tests (GitHub outputs `grep`, `full`).
  */
@@ -277,7 +277,7 @@ export function toMarkdown(r: ImpactReport): string {
   const lines = [`## Change impact${r.base ? ` vs \`${r.base}\`` : ''}`, ''];
   lines.push(
     r.full
-      ? `**Full regression** — ${r.fullReason ?? ''}.`
+      ? `**Full regression**: ${r.fullReason ?? ''}.`
       : `**${r.tests.selected} of ${r.tests.total}** tests selected (${r.features.length} features, ${r.specs.length} specs).`,
     '',
   );
@@ -287,10 +287,10 @@ export function toMarkdown(r: ImpactReport): string {
         ['Risk', 'Feature', 'Criticality', 'Why', 'Open defects'],
         r.features.map((f) => [
           `${f.level} (${f.risk})`,
-          `${f.id} — ${f.title}`,
+          `${f.id}: ${f.title}`,
           f.criticality,
           f.because.slice(0, 3).join('; '),
-          f.openDefects.join(', ') || '—',
+          f.openDefects.join(', ') || '-',
         ]),
       ),
       '',

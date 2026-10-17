@@ -19,10 +19,10 @@ charged at checkout.
 
 | Code         | Kind    | Value | Minimum subtotal | Cap  | Expiry          |
 | ------------ | ------- | ----- | ---------------- | ---- | --------------- |
-| `WELCOME10`  | percent | 10 %  | $20.00           | —    | none            |
-| `SAVE5`      | fixed   | $5.00 | $30.00           | —    | none            |
+| `WELCOME10`  | percent | 10 %  | $20.00           | none | none            |
+| `SAVE5`      | fixed   | $5.00 | $30.00           | none | none            |
 | `BIGSPENDER` | percent | 15 %  | $100.00          | $30  | none            |
-| `SUMMER20`   | percent | 20 %  | —                | —    | expired         |
+| `SUMMER20`   | percent | 20 %  | none             | none | expired         |
 
 Admins create more with `POST /api/admin/coupons`; tests make their own with
 unique codes.

@@ -2,7 +2,7 @@
 
     propose ──▶ gate (this module, deterministic) ──▶ judge (knowledge-curator subagent, rubric) ──▶ commit
                  shape · evidence · links · scope        grounded · reusable · actionable ·          accepted → vault
-                 ownership · novelty · retrieval          scoped · consistent (1–5 each)              human-owned → _curation/proposals
+                 ownership · novelty · retrieval          scoped · consistent (1-5 each)              human-owned → _curation/proposals
                                                                                                        anything else → rejected
 Every decision is appended to knowledge/_curation/ledger.jsonl.
 
@@ -234,13 +234,13 @@ def _looks_like_path(ref: str) -> bool:
 def check_shape(p: Proposal, new_doc: Document, by_id: dict[str, Document]) -> Check:
     problems: list[str] = []
     if not p.title or len(p.title) > 90:
-        problems.append("title is 1–90 characters")
+        problems.append("title is 1-90 characters")
     if not p.body:
         problems.append("body is empty")
     if p.kind != "deprecate" and (not p.probe.endswith("?") or len(p.probe) < 12):
         problems.append("probe is a question (ends with '?') this knowledge answers")
     if p.kind == "add" and new_doc.id in by_id:
-        problems.append(f"{new_doc.id} exists — propose an update of it")
+        problems.append(f"{new_doc.id} exists, so propose an update of it instead")
     if p.kind in ("update", "deprecate"):
         target = by_id.get(p.target or "")
         if not target:
@@ -251,15 +251,15 @@ def check_shape(p: Proposal, new_doc: Document, by_id: dict[str, Document]) -> C
             problems.append(f"an update keeps the id {target.id}")
     if p.type == "learning" and p.kind != "deprecate":
         if len(p.body) > MAX_LESSON_CHARS:
-            problems.append(f"lesson is over {MAX_LESSON_CHARS} characters — split it or cut it")
+            problems.append(f"lesson is over {MAX_LESSON_CHARS} characters; split it or cut it")
         if m := LOG_PHRASES.search(p.body):
-            problems.append(f"reads as a run log ({m.group(0)!r}) — state the rule, why, and where it applies")
+            problems.append(f"reads as a run log ({m.group(0)!r}); state the rule, why, and where it applies")
     return Check("shape", not problems, "; ".join(problems) or "ok")
 
 
 def check_evidence(p: Proposal) -> Check:
     if not p.evidence:
-        return Check("evidence", False, "no evidence — every change cites what proves it")
+        return Check("evidence", False, "no evidence: every change has to cite what proves it")
     problems = [f"unknown evidence kind {e.kind!r}" for e in p.evidence if e.kind not in EVIDENCE_KINDS]
     for e in p.evidence:
         if not e.ref:
@@ -281,7 +281,7 @@ def check_scope(p: Proposal, new_doc: Document) -> Check:
         return Check("scope", True, "n/a")
     globs = [str(g) for g in new_doc.meta.get("applies_to") or []]
     if not globs:
-        return Check("scope", False, "applies_to is empty — name the paths the lesson governs")
+        return Check("scope", False, "applies_to is empty: name the paths the lesson governs")
     dead = [g for g in globs if next(iter(ROOT.glob(g.rstrip("/"))), None) is None]
     return Check("scope", not dead, f"applies_to matches no file: {', '.join(dead)}" if dead else ", ".join(globs))
 
@@ -291,7 +291,7 @@ def check_ownership(p: Proposal, new_doc: Document, by_id: dict[str, Document]) 
     if p.type in QA_ARTIFACTS:
         return Check("ownership", False, f"{p.type}s are written with upsert_document and reviewed by test-reviewer"), False
     if p.type in GENERATED or (p.target or "").startswith("SETUP-"):
-        return Check("ownership", False, "generated from framework/setup/recipes.ts — add or change a recipe (RECIPE_MISSING), then bun run qa:arrange --catalog"), False
+        return Check("ownership", False, "generated from framework/setup/recipes.ts: add or change a recipe (RECIPE_MISSING), then bun run qa:arrange --catalog"), False
     if p.type == "learning":
         return Check("ownership", True, "agent-owned"), False
     if p.type == "feature" and p.kind == "update" and (target := by_id.get(p.target or "")):
@@ -338,7 +338,7 @@ def retrieval_and_novelty(
             neighbours = neighbours[:3]
         top = neighbours[0] if neighbours else None
         if p.kind == "add" and top and top["similarity"] >= DUPLICATE_SIMILARITY:
-            novelty = Check("novelty", False, f"near-duplicate of {top['id']} ({top['similarity']}) — propose an update of it")
+            novelty = Check("novelty", False, f"near-duplicate of {top['id']} ({top['similarity']}); propose an update of it instead")
         else:
             novelty = Check("novelty", True, f"closest {top['id']} ({top['similarity']})" if top else "nothing similar")
 
@@ -393,7 +393,7 @@ def evaluate(raw: dict[str, Any], docs: list[Document] | None = None, today: dat
         retrieval_check, novelty, neighbours, retrieval = retrieval_and_novelty(p, docs, after, new_doc, load_cases())
         checks += [novelty, retrieval_check]
     else:
-        checks.append(Check("retrieval", True, "skipped — fix the failed checks first"))
+        checks.append(Check("retrieval", True, "skipped until the failed checks are fixed"))
 
     decision: Literal["judge", "needs_human", "reject"] = (
         "reject" if any(not c.ok for c in checks) else "needs_human" if human else "judge"
@@ -421,7 +421,7 @@ def load_pending(proposal_id: str) -> tuple[dict[str, Any], dict[str, Any]]:
         raise ValueError(f"not a proposal id: {proposal_id!r} (PROP-YYYYMMDD-xxxxxx)")
     path = PENDING_DIR / f"{proposal_id}.json"
     if not path.exists():
-        raise ValueError(f"no pending proposal {proposal_id} — evaluate it with propose_knowledge first")
+        raise ValueError(f"no pending proposal {proposal_id}; evaluate it with propose_knowledge first")
     data = json.loads(path.read_text(encoding="utf-8"))
     return data["proposal"], data["evaluation"]
 
@@ -444,7 +444,7 @@ def judge_bar(scores: dict[str, int]) -> str | None:
         return f"scores missing: {', '.join(missing)}"
     values = [int(scores[c]) for c in CRITERIA]
     if any(v < 1 or v > 5 for v in values):
-        return "scores are 1–5"
+        return "scores are 1-5"
     if min(values) < MIN_SCORE:
         low = [c for c in CRITERIA if int(scores[c]) < MIN_SCORE]
         return f"{', '.join(low)} below {MIN_SCORE}"
@@ -511,7 +511,7 @@ def _learned() -> list[dict[str, Any]]:
 
 
 class _PrettierYaml(yaml.SafeDumper):
-    """Indents a list under its key (`expected:\\n    - X`), as Prettier formats YAML — an agent's pull request has
+    """Indents a list under its key (`expected:\\n    - X`), as Prettier formats YAML, because an agent's pull request has
     to pass `format:check` like anyone else's."""
 
     def increase_indent(self, flow: bool = False, indentless: bool = False) -> None:
@@ -544,14 +544,14 @@ def write_human_proposal(proposal_id: str, raw: dict[str, Any], ev: dict[str, An
     old = current.read_text(encoding="utf-8").splitlines(keepends=True) if current.exists() else []
     diff = "".join(difflib.unified_diff(old, ev["preview"].splitlines(keepends=True), ev["path"], ev["path"] + " (proposed)"))
     gate = "\n".join(f"| {c['name']} | {'✅' if c['ok'] else '❌'} | {c['detail']} |" for c in ev["checks"])
-    evidence = "\n".join(f"- **{e.get('kind')}** `{e.get('ref')}`{' — ' + e.get('quote', '') if e.get('quote') else ''}" for e in raw.get("evidence") or [])
+    evidence = "\n".join(f"- **{e.get('kind')}** `{e.get('ref')}`{': ' + e.get('quote', '') if e.get('quote') else ''}" for e in raw.get("evidence") or [])
     j = entry["judge"]
     text = (
         f"---\nproposal: {proposal_id}\ndoc: {ev['doc_id']}\nkind: {raw.get('kind')}\nsource: {json.dumps(raw.get('source'))}\nstatus: needs-human\n---\n\n"
-        f"# {proposal_id} — {raw.get('title')}\n\n"
+        f"# {proposal_id}: {raw.get('title')}\n\n"
         f"**Needs a human because:** {entry['reason']}. Apply the diff by hand (then `bun run rag:build`) or delete this file to decline.\n\n"
         f"## Evidence\n\n{evidence}\n\n## Gate\n\n| Check | | Detail |\n| --- | --- | --- |\n{gate}\n\n"
-        f"## Judge ({j['by']})\n\n{', '.join(f'{k} {v}' for k, v in j['scores'].items())} — {j['rationale']}\n\n"
+        f"## Judge ({j['by']})\n\n{', '.join(f'{k} {v}' for k, v in j['scores'].items())}. {j['rationale']}\n\n"
         f"## Proposed change\n\n~~~~diff\n{diff}~~~~\n"
     )
     path = PROPOSALS_DIR / f"{proposal_id}.md"

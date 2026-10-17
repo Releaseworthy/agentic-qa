@@ -4,7 +4,7 @@ import type { Card } from '@data/cards';
 
 export type Checkout = { shippingAddress: Address; payment: Card };
 
-/** /api/orders — the signed-in user's orders. */
+/** /api/orders: the signed-in user's orders. */
 export class OrdersApi extends HttpClient {
   place(input: Checkout): Promise<Order> {
     return this.call('POST', '/api/orders', Order, input);

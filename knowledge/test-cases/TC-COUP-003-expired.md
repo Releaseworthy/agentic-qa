@@ -10,7 +10,7 @@ automated_by: tests/ui/cart.spec.ts › Cart › an expired coupon is refused
 setup: { recipe: cart, priceCents: 4000, stock: 10, quantity: 1 }
 ---
 
-# TC-COUP-003 — An expired coupon is refused
+# TC-COUP-003: An expired coupon is refused
 
 ## Preconditions
 

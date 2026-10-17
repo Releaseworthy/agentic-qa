@@ -20,22 +20,22 @@ rules, work-item cards, defects, manual test cases, review learnings and the gen
 
 `bun run rag:eval` scores the three modes on three question sets, and CI fails if hybrid regresses:
 
-| Set                                   | Used for                                           | Questions |
-| ------------------------------------- | -------------------------------------------------- | --------- |
-| `golden.yaml` + `golden.learned.yaml` | the ranking priors were tuned here; learned probes | 28        |
-| `golden.dev.yaml`                     | choosing the next ranking change                   | 24        |
-| `golden.holdout.yaml`                 | never tuned or chosen on — the honest number       | 59        |
+| Set                                   | Used for                                              | Questions |
+| ------------------------------------- | ----------------------------------------------------- | --------- |
+| `golden.yaml` + `golden.learned.yaml` | the ranking priors were tuned here; learned probes    | 28        |
+| `golden.dev.yaml`                     | choosing the next ranking change                      | 24        |
+| `golden.holdout.yaml`                 | never tuned or chosen on, so it's the number to trust | 59        |
 
 | Mode   | Golden: hit@1 · hit@5 · MRR | Dev: hit@1 · hit@5 · MRR  | Held out: hit@1 · hit@5 · MRR |
 | ------ | --------------------------- | ------------------------- | ----------------------------- |
-| vector | 0.643 · 1.0 · 0.775         | **0.792** · 0.917 · 0.831 | 0.746 · 0.983 · **0.849**     |
-| graph  | 0.357 · 0.571 · 0.464       | 0.417 · 0.667 · 0.521     | 0.322 · 0.576 · 0.426         |
-| hybrid | **0.714 · 1.0 · 0.851**     | 0.750 · **0.958 · 0.847** | 0.746 · 0.983 · 0.845         |
+| vector | 0.679 · 1.0 · 0.805         | **0.833** · 0.875 · 0.847 | 0.746 · 0.983 · 0.853         |
+| graph  | 0.393 · 0.607 · 0.500       | 0.417 · 0.667 · 0.521     | 0.322 · 0.576 · 0.426         |
+| hybrid | **0.714 · 1.0 · 0.851**     | 0.792 · **0.958 · 0.858** | **0.763 · 0.983 · 0.860**     |
 
-On questions it was never tuned on, hybrid ties vector-only. Its ranking edge is in-sample; the graph earns its
+On questions it was never tuned on, hybrid is only one question ahead of vector-only (hit@1 0.763 vs 0.746), which is within noise at this size. The graph earns its
 place in `related()` walks (a feature → its rules, code, specs, defects) and id lookups rather than in the ranking.
-An earlier 14-question held-out set had hybrid clearly behind (0.738 vs 0.845 MRR) — at that size one question
-moves MRR by ~0.07, which is why it grew to 59.
+An earlier 14-question held-out set had hybrid clearly behind (0.738 vs 0.845 MRR). At that size one question
+moves MRR by ~0.07, so the set was grown to 59.
 
 With `LANGSMITH_API_KEY` set the run is logged to **LangSmith** as an experiment, and `--answers` adds answer
 quality: Claude answers from the retrieved context only, and an LLM judge scores faithfulness.
@@ -77,7 +77,7 @@ flowchart LR
   H["learn &lt;PR&gt;<br/>comments · human edits to agent PRs"] --> P
   P --> G{"gate<br/>deterministic"}
   G -->|fail| X["rejected<br/>(ledger)"]
-  G -->|pass| J{"knowledge-curator<br/>5 criteria, 1–5"}
+  G -->|pass| J{"knowledge-curator<br/>5 criteria, 1-5"}
   G -->|Product-owned| HU["_curation/proposals<br/>for a human"]
   J -->|"min ≥ 3, mean ≥ 4"| A["accepted → vault<br/>probe → golden set"]
   J -->|below the bar| X

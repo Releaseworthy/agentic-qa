@@ -11,7 +11,7 @@
  *   bun run qa:arrange --check                              catalog up to date, every test case arranges via a recipe
  *   bun run qa:arrange --stop                               stop the ShopLite this CLI started for TEST_ENV
  *
- *   --defects <ids|all|none>   switch the app's seeded defects (app/defects.ts) — practice targets
+ *   --defects <ids|all|none>   switch the app's seeded defects (app/defects.ts), used as practice targets
  *
  * Prints JSON: user (with password), data (what was created), testData (cards, address, registration), next
  * (the playwright-cli commands that open the state). Saves out/sessions/<name>.json and <name>.arranged.json.
@@ -42,7 +42,7 @@ async function health(): Promise<{ env?: unknown } | undefined> {
   }
 }
 
-/** The app must answer as TEST_ENV — the check global setup makes — so a recipe never seeds another environment. */
+/** The app must answer as TEST_ENV (same check as global setup) so a recipe never seeds another environment. */
 function assertEnvironment(answer: { env?: unknown }): void {
   if (answer.env !== env.name)
     throw new Error(`${env.baseUrl} answers as the "${String(answer.env)}" environment, not TEST_ENV=${env.name}`);
@@ -101,7 +101,7 @@ function check(): number {
   const problems: string[] = [];
   const catalog = join(ROOT, CATALOG_PATH);
   if (!existsSync(catalog) || readFileSync(catalog, 'utf8') !== renderCatalog())
-    problems.push(`${CATALOG_PATH} is out of date — bun run qa:arrange --catalog`);
+    problems.push(`${CATALOG_PATH} is out of date, run bun run qa:arrange --catalog`);
   const vault = new Vault();
   problems.push(...checkCases(vault.testCases, (tc) => readFileSync(join(ROOT, tc.path), 'utf8')));
   for (const p of problems) console.error(`✗ ${p}`);
@@ -155,7 +155,7 @@ if (values.catalog) {
   }
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, renderCatalog());
-  console.log(`wrote ${CATALOG_PATH} — run \`bun run rag:build\` to index it`);
+  console.log(`wrote ${CATALOG_PATH}; run \`bun run rag:build\` to index it`);
   process.exit(0);
 }
 if (values.list) {
@@ -171,7 +171,7 @@ if (values.list) {
   else
     for (const r of rows)
       console.log(
-        `${r.id.padEnd(20)} ${r.seeds ? '' : '[no data] '}${r.summary}\n${' '.repeat(21)}params: ${r.params.join(', ') || '—'}`,
+        `${r.id.padEnd(20)} ${r.seeds ? '' : '[no data] '}${r.summary}\n${' '.repeat(21)}params: ${r.params.join(', ') || 'none'}`,
       );
   process.exit(0);
 }
@@ -181,7 +181,7 @@ let params: Record<string, unknown>;
 if (values.case !== undefined) {
   const tc = new Vault().testCases.find((c) => c.id === values.case);
   if (!tc) throw new Error(`--case: no test case ${values.case}`);
-  if (!tc.setup) throw new Error(`${tc.id} has no \`setup\` — qa-writer adds the recipe that arranges it`);
+  if (!tc.setup) throw new Error(`${tc.id} has no \`setup\` yet (qa-writer adds the recipe that arranges it)`);
   ({ recipe: id, params } = tc.setup);
   params = { ...params, ...paramsOf(positionals) };
 } else {
@@ -190,7 +190,7 @@ if (values.case !== undefined) {
   id = first;
   params = paramsOf(rest);
 }
-if (!isRecipe(id)) throw new Error(`unknown recipe "${id}" — one of ${Object.keys(RECIPES).join(', ')}`);
+if (!isRecipe(id)) throw new Error(`unknown recipe "${id}", expected one of ${Object.keys(RECIPES).join(', ')}`);
 const recipeId: RecipeId = id;
 const valid = RECIPES[recipeId].params.safeParse(params);
 if (!valid.success) {
@@ -199,7 +199,7 @@ if (!valid.success) {
 }
 if (RECIPES[recipeId].seeds && env.readOnly)
   throw new Error(
-    `TEST_ENV=${env.name} is read-only: recipe "${recipeId}" creates data — use guest or returning-customer`,
+    `TEST_ENV=${env.name} is read-only: recipe "${recipeId}" creates data. Use guest or returning-customer`,
   );
 
 const started = await ensureServer();

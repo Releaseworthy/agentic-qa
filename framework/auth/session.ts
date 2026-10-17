@@ -73,7 +73,7 @@ export function storageState(session?: Session): StorageState {
 /**
  * A live session for a saved account: from disk while still fresh, otherwise
  * from a new API sign-in (written back to disk). `verify` also asks the server
- * whether a saved token is still accepted — global setup does this once per
+ * whether a saved token is still accepted. Global setup does this once per
  * run, since an app restart drops every session. Deduplicated per process.
  */
 export function session(account: SavedAccount, { verify = false } = {}): Promise<Session> {

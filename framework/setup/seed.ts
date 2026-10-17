@@ -10,7 +10,7 @@ import { step } from '@utils/step';
 
 type Line = { product: Product; quantity?: number };
 
-/** `priceCents=1500, stock=4` — the fields a seed step was asked for. */
+/** `priceCents=1500, stock=4`: the fields a seed step was asked for. */
 function fields(input: object): string {
   const set = Object.entries(input).filter(([, value]) => value !== undefined);
   return set.length ? set.map(([key, value]) => `${key}=${String(value)}`).join(', ') : 'defaults';
@@ -40,7 +40,7 @@ export class Seed {
     return newCustomer(this.request);
   }
 
-  /** A product no other test touches — its stock is this test's to change. */
+  /** A product no other test touches, so this test is free to change its stock. */
   @step((overrides: Partial<NewProduct> = {}) => `Seed: product (${fields(overrides)})`)
   async product(overrides: Partial<NewProduct> = {}): Promise<Product> {
     const sku = uniqueSku();
@@ -91,7 +91,7 @@ export class Seed {
     return this.api.as(customer).orders.cancel(order.id);
   }
 
-  /** BR-AUTH-02: five wrong passwords in a row — checked by the right one then being refused as ACCOUNT_LOCKED. */
+  /** BR-AUTH-02: five wrong passwords in a row. Verified by signing in with the right one and getting ACCOUNT_LOCKED. */
   @step((customer: Customer) => `Seed: lock ${customer.name}'s account with 5 failed sign-ins`)
   async lockedOut(customer: Customer): Promise<Customer> {
     const attempt = (password: string) =>
