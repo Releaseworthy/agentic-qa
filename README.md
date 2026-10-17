@@ -3,14 +3,14 @@
 [![QA pipeline](https://github.com/hoanglan9569/agentic-qa/actions/workflows/ci.yml/badge.svg)](https://github.com/hoanglan9569/agentic-qa/actions/workflows/ci.yml)
 [![QA report](https://img.shields.io/badge/QA_report-GitHub_Pages-2ea44f)](https://hoanglan9569.github.io/agentic-qa/)
 
-**AI agents that do the QA job end to end.** They plan from risk, refine acceptance criteria, write and run API and
-UI tests, explore the app, verify and retest bugs, run impact-based regression and make the Go/No-Go call —
-grounded in a Hybrid RAG knowledge base and a real Playwright framework, and checked by deterministic engines and
-human review.
+A set of AI agents that handle the QA work on a project from start to finish. They plan from risk, refine acceptance
+criteria, write and run API and UI tests, explore the app, verify and retest bugs, run impact-based regression and
+make the Go/No-Go call. They work from a Hybrid RAG knowledge base and a real Playwright framework, and their output
+is checked by deterministic engines and by human review.
 
-They test **ShopLite**, a small shop with a REST API and a web UI that ships inside the repo. It has switchable
-**seeded defects**, so "the agents and the tests catch bugs" is measured, not claimed. Everything runs locally and
-in CI, with no external system.
+The app under test is **ShopLite**, a small shop with a REST API and a web UI that lives in this repo. It has
+switchable **seeded defects**, so you can actually check whether the agents and the tests catch bugs. Everything runs
+locally and in CI, with no external system.
 
 **Stack:** Claude Agent SDK · Claude Code skills and subagents · MCP · Playwright + TypeScript on Bun ·
 ChromaDB + Neo4j (Hybrid RAG, Python/uv) · LangSmith · ripgrep · GitHub Actions · Azure Pipelines
@@ -20,11 +20,11 @@ ChromaDB + Neo4j (Hybrid RAG, Python/uv) · LangSmith · ripgrep · GitHub Actio
 | Claim                            | Evidence                                                                                                                                                                                                                             |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | The agents do real QA work       | Headless runs: `refine-ac` → 13 questions for Product and 8 testable criteria ($1.17); `adhoc-test` → all 4 planted defects found ($0.77); `learn` → lessons through gate and judge ($0.53, $0.68). [Runs](docs/agents.md#real-runs) |
-| The suite catches bugs           | Every seeded defect turns a test tagged with its rule from green to red — [4 of 4](docs/examples/defect-detection.md), checked on every push                                                                                         |
+| The suite catches bugs           | Every seeded defect turns a test tagged with its rule from green to red: [4 of 4](docs/examples/defect-detection.md), checked on every push                                                                                          |
 | Tests are independent            | 112 API + Chromium tests (164 runs with Firefox and WebKit), fully parallel, each on data of its own                                                                                                                                 |
 | Releases are decided on evidence | Go/No-Go, traceability and the defect board, published to [GitHub Pages](https://hoanglan9569.github.io/agentic-qa/) on every push to `main`                                                                                         |
-| Retrieval is measured honestly   | Vector vs graph vs hybrid on tuning, dev and held-out questions — on 59 held-out ones, hybrid ties vector. [Eval](docs/knowledge.md#evaluation)                                                                                      |
-| Agents are checked, not trusted  | A heal guard blocks weakened tests, a knowledge guard blocks uncurated vault edits, one tool policy covers every session. [How](docs/agents.md#tool-policy)                                                                          |
+| Retrieval quality is measured    | Vector vs graph vs hybrid on tuning, dev and held-out questions. On the 59 held-out ones, hybrid is one question ahead of vector. [Eval](docs/knowledge.md#evaluation)                                                               |
+| Agent output is checked          | A heal guard blocks weakened tests, a knowledge guard blocks uncurated vault edits, one tool policy covers every session. [How](docs/agents.md#tool-policy)                                                                          |
 
 ## Quick start
 
@@ -94,14 +94,14 @@ flowchart LR
 | [Agents](docs/agents.md)         | Skills orchestrate subagents on the right model; one tool policy for every session; a headless runner            |
 | [Knowledge](docs/knowledge.md)   | A Markdown vault → ChromaDB + Neo4j over MCP; lessons gated, judged by another agent, ledgered                   |
 | [Framework](docs/framework.md)   | Playwright + TypeScript: API helpers, zod contracts, page objects, recipes, environments, saved accounts         |
-| [QA engines](docs/qa-engines.md) | Impact, traceability, release gate, defect detection, triage, manual runs, flakiness, guards — and every command |
+| [QA engines](docs/qa-engines.md) | Impact, traceability, release gate, defect detection, triage, manual runs, flakiness, guards, plus every command |
 | [CI/CD](docs/ci.md)              | The QA pipeline, the agentic workflow (agent job + publish job), Azure Pipelines                                 |
 
 ## Project structure
 
 ```
 ├─ app/                 ShopLite: REST API (domain/, routes/), SPA (web/), seeded defects (defects.ts)
-├─ env/                 .env.dev · .env.staging · .env.live — per-environment settings, encrypted accounts
+├─ env/                 .env.dev · .env.staging · .env.live: per-environment settings, encrypted accounts
 ├─ framework/           api/ (helpers + zod schemas) · auth/ (accounts, storage states) · config/ (env, paths,
 │                       timeouts) · data/ · pages/ · setup/ (seed, recipes + qa:arrange CLI, catalog, app launcher) ·
 │                       utils/ (date, step, crypto) · fixtures

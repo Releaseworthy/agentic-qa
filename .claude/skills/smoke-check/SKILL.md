@@ -1,6 +1,6 @@
 ---
 name: smoke-check
-description: Post-deployment verification of an environment — health and environment identity, the @smoke suite (only @readonly tests on live), and a short playwright-cli walk of the critical pages as the saved returning customer — ending in PASS / FAIL with a rollback recommendation. Invoke as /smoke-check [--env staging|live|dev].
+description: Post-deployment verification of an environment. Checks health and environment identity, runs the @smoke suite (only @readonly tests on live), and does a short playwright-cli walk of the critical pages as the saved returning customer, ending in PASS / FAIL with a rollback recommendation. Invoke as /smoke-check [--env staging|live|dev].
 argument-hint: "[--env <name>]"
 ---
 
@@ -8,7 +8,7 @@ argument-hint: "[--env <name>]"
 
 Read `.claude/rules/browser.md` first. Default env `staging`. Nothing here writes data on live.
 
-1. **Identity:** `TEST_ENV=<env> bun run qa:arrange returning-customer --name smoke-<env>` — the framework recipe that
+1. **Identity:** `TEST_ENV=<env> bun run qa:arrange returning-customer --name smoke-<env>`. This framework recipe
    checks `/health`, signs in the saved account and creates nothing. A health answer from another
    environment, or no answer → FAIL, stop.
 2. **Automated smoke:** `TEST_ENV=<env> bunx playwright test --project=api --project=chromium --grep @smoke`

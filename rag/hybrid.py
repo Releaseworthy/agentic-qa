@@ -147,7 +147,7 @@ class HybridRetriever:
             d = self.docs[doc_id]
             section, text = chunks.get(doc_id, ("", ""))
             if not text:
-                text = f"{d.id} — {d.title}\n\n{d.body[:1200]}"
+                text = f"{d.id}: {d.title}\n\n{d.body[:1200]}"
             related = sorted(n for n in self.graph.neighbors(doc_id, 1) if n in self.docs)[:12]
             results.append(Result(d.id, d.title, d.type, d.path, round(fused[doc_id], 5), via[doc_id], section, text, related))
         return results

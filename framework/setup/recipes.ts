@@ -24,7 +24,7 @@ import { now, shift } from '@utils/date';
 export type Arranged = {
   /** Who the browser starts signed in as; undefined = signed out. */
   signedIn: Session | undefined;
-  /** Whose state it is — also for a signed-out customer, whose credentials the steps type in. */
+  /** Whose state it is. Also set for a signed-out customer, since the steps type in their credentials. */
   user: Session | Customer | undefined;
   /** The web-app route the steps start on. */
   route: string;
@@ -34,7 +34,7 @@ export type Arranged = {
 
 type Context = {
   api: Api;
-  /** Refused on a read-only environment — only recipes with `seeds: true` call it. */
+  /** Refused on a read-only environment. Only recipes with `seeds: true` call it. */
   seed: () => Seed;
   /** The customer the state belongs to: the caller's (a spec's signed-in customer), else a fresh one. */
   customer: () => Promise<Customer>;
@@ -42,7 +42,7 @@ type Context = {
 
 export type Recipe = {
   summary: string;
-  /** Rules and features the state is typical for — links in the catalog. */
+  /** Rules and features the state is typical for. Shown as links in the catalog. */
   covers: string[];
   /** Creates data: refused on a read-only environment. */
   seeds: boolean;
@@ -79,7 +79,7 @@ export const RECIPES = {
 
   'returning-customer': recipe({
     summary:
-      'Signed in as the saved returning customer (order history); creates nothing — the only signed-in state on live. Read-only use.',
+      'Signed in as the saved returning customer (order history); creates nothing. This is the only signed-in state on live. Read-only use.',
     covers: ['FEAT-ORDERS'],
     seeds: false,
     lands: '#/orders',
@@ -123,7 +123,7 @@ export const RECIPES = {
   }),
 
   product: recipe({
-    summary: 'A signed-in customer and a fresh product of their own (price, stock) — not in the cart.',
+    summary: 'A signed-in customer and a fresh product of their own (price, stock), not yet in the cart.',
     covers: ['FEAT-CATALOG', 'FEAT-CART', 'BR-CART-01', 'BR-CART-02'],
     seeds: true,
     lands: '#/product/<product.id>',
@@ -148,7 +148,7 @@ export const RECIPES = {
       coupon: z
         .string()
         .optional()
-        .describe('a code to apply, e.g. WELCOME10 (seeded) — a coupon of your own shape: the `coupon` recipe'),
+        .describe('a code to apply, e.g. WELCOME10 (seeded). For a custom coupon use the `coupon` recipe'),
     }),
     run: async (ctx, p) => {
       const user = await ctx.customer();
@@ -178,7 +178,7 @@ export const RECIPES = {
       })
       .refine((p) => !(p.expired && p.applied), {
         message:
-          'an expired coupon cannot be applied (BR-COUP-03) — arrange it with applied=false and apply it as a step',
+          'an expired coupon cannot be applied (BR-COUP-03), so arrange it with applied=false and apply it as a step',
         path: ['applied'],
       }),
     run: async (ctx, p) => {
@@ -202,7 +202,7 @@ export const RECIPES = {
   }),
 
   order: recipe({
-    summary: 'A signed-in customer with an order of a fresh product — placed, shipped (by the admin) or cancelled.',
+    summary: 'A signed-in customer with an order of a fresh product: placed, shipped (by the admin) or cancelled.',
     covers: ['FEAT-ORDERS', 'BR-ORD-01', 'BR-ORD-02', 'BR-ORD-03'],
     seeds: true,
     lands: '#/orders/<order.id>',
@@ -250,7 +250,7 @@ export function arrange<K extends RecipeId>(
   return (RECIPES[id] as Recipe).arrange(ctx, params);
 }
 
-/** Test data the steps type in — from the framework, never invented (card expiries move with the calendar). */
+/** Test data the steps type in. It comes from the framework and is never made up (card expiries move with the calendar). */
 export function testData() {
   return { cards: Cards, address: newAddress(), registration: newRegistration() };
 }

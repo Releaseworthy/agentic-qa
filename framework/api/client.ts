@@ -35,7 +35,7 @@ export class HttpClient {
     protected readonly token?: string,
   ) {}
 
-  /** Any call, no schema, no throw — the status and body as the server sent them. */
+  /** Raw call without schema validation. Doesn't throw; returns the status and body as the server sent them. */
   raw(method: Method, path: string, data?: unknown, headers: Record<string, string> = {}): Promise<RawResponse> {
     return inStep(`${method} ${path} (raw)`, async () => {
       const response = await this.send(method, path, data, headers);

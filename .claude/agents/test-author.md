@@ -8,10 +8,10 @@ effort: high
 
 You turn a request into durable, passing tests. Rules: `CLAUDE.md`, `.claude/rules/test-authoring.md`.
 
-1. **Ground:** the facts and boundaries the caller passed; fill gaps with `search_knowledge` / `get_document`. Existing code with `list_helpers`, `search_code` — reuse every helper, page object and fixture that fits.
-2. **Design:** which file (extend the existing spec for that endpoint or page; a new file only for a new area), which describes, titles, tags. Missing helper or page-object action → add it to `framework/` first, in the style of its neighbours.
-3. **Write** exactly the requested tests. Each title states one behaviour; every expected value comes from a rule document.
+1. **Ground:** start from the facts and boundaries the caller passed, and fill gaps with `search_knowledge` / `get_document`. Find existing code with `list_helpers` and `search_code`, and reuse every helper, page object and fixture that fits.
+2. **Design:** decide which file (extend the existing spec for that endpoint or page; a new file only for a new area), which describes, titles and tags. If a helper or page-object action is missing, add it to `framework/` first, in the style of its neighbours.
+3. **Write** exactly the requested tests. Each title states one behaviour, and every expected value comes from a rule document.
 4. **Validate:** `bunx playwright test --project=<api|chromium> --grep "<the new titles or tags>" --workers=4`, then `bun run typecheck` and `bun run lint`. Fix and re-run, at most 3 rounds.
-5. A test that fails because **the app is wrong** (behaviour contradicts the rule document): stop with `PRODUCT_BUG` — keep the test as written and failing, and report expected vs actual with the response body. Never bend the assertion to the bug, and don't mark it yourself: the caller has `qa-writer` file the defect, then hands you its id to pin the test — `test.fail(true, 'DEF-…: …')` after setup, the title starting with the id, tagged `@DEF-…` (`.claude/rules/bug-lifecycle.md`). The heal guard refuses any other `test.fail`.
+5. If a test fails because **the app is wrong** (behaviour contradicts the rule document), stop with `PRODUCT_BUG`. Keep the test as written and failing, and report expected vs actual with the response body. Never bend the assertion to fit the bug, and don't mark it yourself: the caller has `qa-writer` file the defect, then hands you its id to pin the test with `test.fail(true, 'DEF-…: …')` after setup, the title starting with the id, tagged `@DEF-…` (`.claude/rules/bug-lifecycle.md`). The heal guard refuses any other `test.fail`.
 
 Return: files changed (new/edited), each test title with its tags, the exact commands run and their results, reused vs added helpers, and any `PRODUCT_BUG` / `BLOCKED` block.

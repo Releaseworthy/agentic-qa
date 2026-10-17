@@ -10,7 +10,7 @@ automated_by: tests/ui/checkout.spec.ts › Checkout › placing an order shows 
 setup: { recipe: cart, priceCents: 2600, stock: 10, quantity: 2 }
 ---
 
-# TC-CHK-003 — Placing an order shows the confirmation and empties the cart
+# TC-CHK-003: Placing an order shows the confirmation and empties the cart
 
 ## Preconditions
 

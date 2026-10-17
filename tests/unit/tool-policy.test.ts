@@ -9,7 +9,7 @@ const HEADLESS = { headless: true, cwd: ROOT };
 const at = (rel: string) => join(ROOT, rel);
 
 describe('knowledge writes by role', () => {
-  it('only the knowledge-curator commits a verdict — a proposer never judges itself', () => {
+  it('only the knowledge-curator commits a verdict, so a proposer never judges its own proposal', () => {
     expect(denial('mcp__knowledge__commit_knowledge', {}), 'the orchestrator').toContain('knowledge-curator');
     expect(
       denial('mcp__knowledge__commit_knowledge', {}, { agentType: 'test-author' }),
@@ -54,7 +54,7 @@ describe('file writes', () => {
 });
 
 describe('shell', () => {
-  it('splits a command line into its simple commands — not inside quotes, not at 2>&1 or >|', () => {
+  it('splits a command line into its simple commands, ignoring quotes, 2>&1 and >|', () => {
     expect(commandsOf('cd app && TEST_ENV=live bun run qa:gate | tail -5; ls & wc')).toEqual([
       'cd app',
       'bun run qa:gate',

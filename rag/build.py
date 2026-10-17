@@ -45,7 +45,7 @@ def main() -> None:
     edges = sum(len(graph.edges_of(n.id)) for n in graph.nodes()) // 2
     print(
         f"Indexed {len(docs)} documents as {chunks} chunks; graph {len(graph.nodes())} nodes, {edges} edges"
-        f"{' (also in Neo4j)' if NEO4J_URI else ''} — {time.perf_counter() - started:.1f}s"
+        f"{' (also in Neo4j)' if NEO4J_URI else ''} in {time.perf_counter() - started:.1f}s"
     )
 
 

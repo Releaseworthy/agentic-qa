@@ -14,7 +14,7 @@ import { Seed } from '@setup/seed';
 
 type Options = {
   /**
-   * Who the browser starts signed in as — straight from a storage state, never
+   * Who the browser starts signed in as. Loaded straight from a storage state, never
    * through the login form (that has its own tests). Default GUEST.
    */
   account: Account;
@@ -26,11 +26,11 @@ type Fixtures = {
   /** Test-data setup over the API (fresh customers, products, coupons, orders). Refused on read-only envs. */
   seed: Seed;
   /**
-   * A named start state (framework/setup/recipes.ts) — the same one a manual run arranges with
+   * A named start state (framework/setup/recipes.ts), the same one a manual run arranges with
    * `bun run qa:arrange --case TC-…`. It belongs to the signed-in customer when `account` is NEW_CUSTOMER.
    */
   arrange: <K extends RecipeId>(id: K, params?: RecipeParams<K>) => Promise<Arranged>;
-  /** A customer registered for this test only — the signed-in one when `account` is NEW_CUSTOMER. */
+  /** A customer registered for this test only. This is the signed-in one when `account` is NEW_CUSTOMER. */
   customer: Customer;
   /** The session the browser is signed in with. Throws for GUEST. */
   user: Session;
@@ -63,7 +63,7 @@ export const test = base.extend<Options & Fixtures & Internal>({
   },
   storageState: async ({ _session }, use) => use(storageState(_session)),
   user: async ({ _session }, use) => {
-    if (_session === undefined) throw new Error('no user: the test runs as Account.GUEST — set test.use({ account })');
+    if (_session === undefined) throw new Error('no user: the test runs as Account.GUEST, set test.use({ account })');
     await use(_session);
   },
   customer: async ({ _session, request }, use) => use(isCustomer(_session) ? _session : await newCustomer(request)),
@@ -99,7 +99,7 @@ export async function expectRefused(call: Promise<unknown>, status: number, code
   return apiError;
 }
 
-/** "$12.34" for 1234 cents — how the UI prints money. */
+/** "$12.34" for 1234 cents, same format the UI uses for money. */
 export function money(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }

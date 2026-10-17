@@ -4,14 +4,14 @@
  *
  *   Knowledge writes by role   commit_knowledge: only the knowledge-curator subagent (a proposer never judges
  *                              itself) · upsert_document: only qa-writer
- *   File writes                the vault (knowledge/) changes only through the knowledge MCP — never with Write/Edit or
+ *   File writes                the vault (knowledge/) changes only through the knowledge MCP, never with Write/Edit or
  *                              a shell redirect; a headless run (AGENTIC_QA_RUN set) writes only tests/, framework/, out/
  *   Shell                      no pushes, commits, fetches or remotes; gh read-only (plain GET; PR feedback only through
  *                              `bun run qa:pr-feedback`, which drops comments from outside the repo's members);
  *                              curl/wget only to localhost; no reading the credentials in the environment
  *
- * The shell rules narrow what an agent does by accident or under prompt injection. They are not a sandbox — an agent
- * that writes and runs a script can do more — so CI also gives the agent job a read-only token, and the job that
+ * The shell rules narrow what an agent does by accident or under prompt injection. They are not a sandbox (an agent
+ * that writes and runs a script can get around them), so CI also gives the agent job a read-only token, and the job that
  * publishes the agent's patch checks it again (qa/heal-guard.ts, qa/knowledge-guard.ts).
  */
 
@@ -40,7 +40,7 @@ const SECRETS =
 const LOCAL_HOST = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?(\/|$)/;
 
 const VAULT_RULE =
-  'the vault changes only through the knowledge MCP — test cases and defects with upsert_document (qa-writer), ' +
+  'the vault changes only through the knowledge MCP: test cases and defects with upsert_document (qa-writer), ' +
   'everything else with propose_knowledge → knowledge-curator → commit_knowledge; Product-owned documents are edited by a human';
 const HEADLESS_WRITABLE = ['tests/', 'framework/', 'out/'];
 
@@ -56,7 +56,7 @@ export function writeDenial(path: string, { cwd = ROOT, headless = false }: Call
   return undefined;
 }
 
-/** Targets of `>`, `>>`, `&>` and `>|` in one simple command — not `2>&1`, and not a `>` inside quotes. */
+/** Targets of `>`, `>>`, `&>` and `>|` in one simple command. Ignores `2>&1` and any `>` inside quotes. */
 export function redirectTargets(command: string): string[] {
   const masked = command.replace(/'[^']*'|"(?:\\.|[^"\\])*"/g, (quoted) => ' '.repeat(quoted.length));
   const targets: string[] = [];
@@ -191,7 +191,7 @@ function ghDenial(args: string[]): string | undefined {
     return undefined;
   }
   if (sub === 'api') return ghApiDenial(args.slice(1));
-  return `\`gh ${sub ?? ''} ${action ?? ''}\` is not allowed — only gh pr view/diff and read-only gh api`;
+  return `\`gh ${sub ?? ''} ${action ?? ''}\` is not allowed. Only gh pr view/diff and read-only gh api are allowed`;
 }
 
 /** git options that come before the subcommand and take the next word as their value. */
@@ -213,13 +213,13 @@ function gitDenial(args: string[]): string | undefined {
   for (let i = 0; i < args.length; i++) {
     const word = args[i] ?? '';
     if (!word.startsWith('-')) {
-      if (GIT_DENIED.has(word)) return `\`git ${word}\` is not allowed — CI commits, pushes and opens the PR`;
+      if (GIT_DENIED.has(word)) return `\`git ${word}\` is not allowed. CI commits, pushes and opens the PR`;
       return undefined;
     }
     const [flag] = flagOf(word);
     // A config override can define an alias that runs anything (`-c alias.x='!git push'`).
     if (flag === '-c' || flag === '--config-env' || flag === '--exec-path')
-      return `\`git ${flag}\` is not allowed — no config overrides`;
+      return `\`git ${flag}\` is not allowed (no config overrides)`;
     if (GIT_VALUE_OPTIONS.has(word)) i++;
   }
   return undefined;
@@ -267,7 +267,7 @@ function simpleDenial(command: string, caller: Caller): string | undefined {
   if (name === 'curl' || name === 'wget') {
     const urls = args.filter((a) => /^https?:\/\//.test(a));
     if (urls.length === 0 || urls.some((u) => !LOCAL_HOST.test(u)))
-      return `\`${name}\` only to ShopLite on localhost — no other network access`;
+      return `\`${name}\` is allowed only to ShopLite on localhost, no other network access`;
   }
   if (FILE_WRITERS.has(name)) {
     const editor = name === 'sed' || name === 'perl';
@@ -297,7 +297,7 @@ export function bashDenial(line: string, caller: Caller = {}): string | undefine
 export function denial(tool: string, input: unknown, caller: Caller = {}): string | undefined {
   const writer = KNOWLEDGE_WRITERS[tool];
   if (writer && caller.agentType !== writer)
-    return `${tool.replace('mcp__knowledge__', '')} is reserved for the ${writer} subagent — hand the work to it`;
+    return `${tool.replace('mcp__knowledge__', '')} is reserved for the ${writer} subagent. Hand the work to it`;
   const fields = typeof input === 'object' && input !== null ? (input as Record<string, unknown>) : {};
   const fileKey = FILE_TOOLS[tool];
   if (fileKey) {

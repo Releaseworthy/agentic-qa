@@ -5,16 +5,16 @@
 [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) runs on every push to `main`, every pull request and
 nightly.
 
-| Job                                  | Runs                                                                                                                                                          |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| lint · types · format · unit         | ESLint, `tsc`, Prettier, the QA-engine unit tests, recipe catalog and test-case setups, vault frontmatter                                                     |
-| heal guard · knowledge guard         | on pull requests: test changes follow documented behaviour, vault changes follow the curation ledger — blocking for `agentic/*` branches, a report for humans |
-| hybrid RAG · local / neo4j           | index build, retrieval eval (golden, dev, held-out), knowledge-gate tests                                                                                     |
-| change impact                        | on pull requests: the impacted tests' `--grep`                                                                                                                |
-| api · chromium ×2 · firefox · webkit | the Playwright suite in the Playwright image (impact-selected on pull requests)                                                                               |
-| staging · smoke, live · read-only    | each environment's stand-in: `@smoke` on staging, `@readonly` on live                                                                                         |
-| seeded-defect detection              | a clean baseline, then every seeded defect must turn a test tagged with its rule red                                                                          |
-| traceability · release gate          | merged report → traceability → Go/No-Go → defect board → [GitHub Pages](https://hoanglan9569.github.io/agentic-qa/)                                           |
+| Job                                  | Runs                                                                                                                                                         |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| lint · types · format · unit         | ESLint, `tsc`, Prettier, the QA-engine unit tests, recipe catalog and test-case setups, vault frontmatter                                                    |
+| heal guard · knowledge guard         | on pull requests: test changes follow documented behaviour, vault changes follow the curation ledger (blocking on `agentic/*` branches, a report for humans) |
+| hybrid RAG · local / neo4j           | index build, retrieval eval (golden, dev, held-out), knowledge-gate tests                                                                                    |
+| change impact                        | on pull requests: the impacted tests' `--grep`                                                                                                               |
+| api · chromium ×2 · firefox · webkit | the Playwright suite in the Playwright image (impact-selected on pull requests)                                                                              |
+| staging · smoke, live · read-only    | each environment's stand-in: `@smoke` on staging, `@readonly` on live                                                                                        |
+| seeded-defect detection              | a clean baseline, then every seeded defect must turn a test tagged with its rule red                                                                         |
+| traceability · release gate          | merged report → traceability → Go/No-Go → defect board → [GitHub Pages](https://hoanglan9569.github.io/agentic-qa/)                                          |
 
 ## Agentic QA
 

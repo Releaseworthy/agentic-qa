@@ -28,7 +28,7 @@ export type Product = {
 export type Coupon = {
   code: string;
   kind: 'percent' | 'fixed';
-  /** Percent (1–100) or cents off. */
+  /** Percent (1-100) or cents off. */
   value: number;
   minSubtotalCents: number;
   /** Upper bound of the discount, for percent coupons. */
@@ -79,7 +79,7 @@ function seedAccount(name: 'ADMIN' | 'CUSTOMER', defaultEmail: string): SeedAcco
   };
 }
 const ADMIN = seedAccount('ADMIN', 'admin@shoplite.test');
-/** A customer with order history — what a returning shopper sees. */
+/** A customer with order history, as a returning shopper sees it. */
 const RETURNING_CUSTOMER = seedAccount('CUSTOMER', 'returning.customer@shoplite.test');
 
 const DAY = 86_400_000;

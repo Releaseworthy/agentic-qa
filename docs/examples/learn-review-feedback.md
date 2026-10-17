@@ -1,4 +1,4 @@
-# learn — review feedback becomes a gated, judged lesson
+# learn: review feedback becomes a gated, judged lesson
 
 `bun run agent learn "<review feedback>" --budget 3` · 9 turns · **$0.53** · 1.3 min · 2026-10-17
 

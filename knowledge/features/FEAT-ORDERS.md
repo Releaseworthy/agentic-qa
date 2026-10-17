@@ -15,7 +15,7 @@ depends_on: [FEAT-CHECKOUT]
 ## Behaviour
 
 - `GET /api/orders` lists the customer's own orders, newest first.
-- `GET /api/orders/:id` shows one order — another customer's order answers
+- `GET /api/orders/:id` shows one order; another customer's order answers
   `404` ([[BR-ORD-03]]).
 - `POST /api/orders/:id/cancel` cancels a `placed` order ([[BR-ORD-01]]) and puts
   its items back in stock ([[BR-ORD-02]]). No refund flow exists yet (see

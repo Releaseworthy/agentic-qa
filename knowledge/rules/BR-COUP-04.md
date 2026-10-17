@@ -6,7 +6,7 @@ feature: FEAT-COUPON
 severity: high
 ---
 
-# BR-COUP-04 — Discount caps
+# BR-COUP-04: Discount caps
 
 - A percent discount is rounded to the cent and **never exceeds the coupon's
   `maxDiscountCents`** cap when it has one (`BIGSPENDER`: 15 % up to $30.00).

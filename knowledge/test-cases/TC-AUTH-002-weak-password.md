@@ -10,7 +10,7 @@ automated_by: tests/ui/auth.spec.ts › Sign up and sign in › a weak password 
 setup: { recipe: guest }
 ---
 
-# TC-AUTH-002 — A weak password is refused with the rule spelled out
+# TC-AUTH-002: A weak password is refused with the rule spelled out
 
 ## Preconditions
 
@@ -23,7 +23,7 @@ setup: { recipe: guest }
 | `abc1234`     | 7 characters            |
 | `onlyletters` | no digit                |
 | `12345678`    | no letter               |
-| `abcdef12`    | 8 characters — accepted |
+| `abcdef12`    | 8 characters, accepted  |
 
 ## Steps
 
@@ -36,4 +36,4 @@ setup: { recipe: guest }
 
 ## Expected overall result
 
-Only a password of 8–64 characters with a letter and a digit is accepted ([[BR-AUTH-01]]).
+Only a password of 8-64 characters with a letter and a digit is accepted ([[BR-AUTH-01]]).

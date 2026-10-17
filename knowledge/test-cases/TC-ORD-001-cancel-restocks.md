@@ -10,7 +10,7 @@ automated_by: none
 setup: { recipe: order, priceCents: 1000, stock: 5, quantity: 1 }
 ---
 
-# TC-ORD-001 — Cancelling a placed order puts its items back in stock
+# TC-ORD-001: Cancelling a placed order puts its items back in stock
 
 ## Preconditions
 

@@ -10,7 +10,7 @@ automated_by: none
 setup: { recipe: cart, priceCents: 1999, stock: 10, quantity: 1 }
 ---
 
-# TC-COUP-001 — A coupon below its minimum subtotal is refused with the minimum
+# TC-COUP-001: A coupon below its minimum subtotal is refused with the minimum
 
 ## Preconditions
 

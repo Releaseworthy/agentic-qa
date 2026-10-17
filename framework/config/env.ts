@@ -18,7 +18,7 @@ export type Environment = z.infer<typeof Environment>;
 /** What every env file must define; anything else in process.env is ignored here. */
 const Variables = z.object({
   BASE_URL: z.url(),
-  /** Start ShopLite as this environment before the run — the local stand-in for a deployment. */
+  /** Start ShopLite as this environment before the run (a local stand-in for a deployment). */
   START_APP: z.stringbool().default(false),
   /** The build exposes /api/test/* (seeded defects can be pinned). Never on a real deployment. */
   TEST_HOOKS: z.stringbool().default(false),

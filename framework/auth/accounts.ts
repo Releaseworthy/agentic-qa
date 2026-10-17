@@ -6,7 +6,7 @@ import { decrypt, isEncrypted } from '@utils/crypto';
  * Who a browser context or API call acts as.
  *
  *   GUEST               no session
- *   NEW_CUSTOMER        a customer registered for this test only — for anything
+ *   NEW_CUSTOMER        a customer registered for this test only. Use it for anything
  *                       that changes per-user state (cart, orders); never shared
  *   RETURNING_CUSTOMER  saved account with order history; read-only use, so
  *                       tests can share it in parallel, on every environment

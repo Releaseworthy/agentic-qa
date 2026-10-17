@@ -1,5 +1,5 @@
 /**
- * Starts ShopLite as the current TEST_ENV — the local stand-in for that
+ * Starts ShopLite as the current TEST_ENV, as a local stand-in for that
  * environment's deployment: its port from BASE_URL, its environment name, test
  * hooks on or off, and the saved accounts it knows, decrypted here and handed
  * over the way a deployment injects its secrets. Playwright's webServer,

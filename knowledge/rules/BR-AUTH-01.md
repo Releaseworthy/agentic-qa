@@ -6,7 +6,7 @@ feature: FEAT-AUTH
 severity: high
 ---
 
-# BR-AUTH-01 — Password policy
+# BR-AUTH-01: Password policy
 
 A password has **8 to 64 characters** with **at least one letter and one digit**.
 
@@ -19,7 +19,7 @@ A password has **8 to 64 characters** with **at least one letter and one digit**
 | `onlyletters`      | `400 WEAK_PASSWORD`    |
 | `12345678`         | `400 WEAK_PASSWORD`    |
 
-Message: "Password needs 8-64 characters, with a letter and a digit" — the UI
+Message: "Password needs 8-64 characters, with a letter and a digit". The UI
 shows it verbatim in an alert. Applies to registration only (there is no
 password change yet).
 

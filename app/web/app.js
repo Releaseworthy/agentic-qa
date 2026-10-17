@@ -402,7 +402,7 @@ async function route() {
   document.body.dataset.ready = path || '/';
 }
 
-/** Outside live, a badge says which environment this is — no one mistakes staging for the real shop. */
+/** Outside live, a badge shows which environment this is so nobody mistakes staging for the real shop. */
 async function showEnvironment() {
   const { env } = await fetch('/health').then((r) => r.json());
   const badge = document.getElementById('env-badge');

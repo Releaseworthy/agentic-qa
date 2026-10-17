@@ -15,7 +15,7 @@ updated: '2026-10-17'
 # A test covers exactly what its title says
 
 - One behaviour per test; the title states it. No extra assertions "while we
-  are here" — they make a failure ambiguous.
+  are here", because they make a failure ambiguous.
 - Setup is not part of the test: it goes through API helpers (`seed.*`) or
   fixtures, never through UI clicks, unless the UI flow *is* the title.
 - Tag every test with the feature (`@FEAT-…`) and each business rule it proves

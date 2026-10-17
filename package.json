@@ -1,6 +1,6 @@
 {
   "name": "agentic-qa",
-  "description": "Agentic QA platform: AI-orchestrated test planning, AC refinement, API/UI test generation, impact-based regression and Go/No-Go release gates — on Playwright, Claude Agent SDK and Hybrid RAG",
+  "description": "Agentic QA platform: AI-orchestrated test planning, AC refinement, API/UI test generation, impact-based regression and Go/No-Go release gates. Built on Playwright, Claude Agent SDK and Hybrid RAG",
   "author": "Lan Hoang <hoanglan9569@gmail.com>",
   "license": "MIT",
   "private": true,

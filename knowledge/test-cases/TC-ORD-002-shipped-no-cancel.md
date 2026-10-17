@@ -10,7 +10,7 @@ automated_by: tests/ui/orders.spec.ts › Order history › new customer › a s
 setup: { recipe: order, status: shipped }
 ---
 
-# TC-ORD-002 — A shipped order cannot be cancelled
+# TC-ORD-002: A shipped order cannot be cancelled
 
 ## Preconditions
 
