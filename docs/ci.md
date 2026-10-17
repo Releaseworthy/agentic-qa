@@ -15,6 +15,7 @@ nightly.
 | staging · smoke, live · read-only    | each environment's stand-in: `@smoke` on staging, `@readonly` on live                                                                                        |
 | seeded-defect detection              | a clean baseline, then every seeded defect must turn a test tagged with its rule red                                                                         |
 | traceability · release gate          | merged report → traceability → Go/No-Go → defect board → [GitHub Pages](https://hoanglan9569.github.io/agentic-qa/)                                          |
+| release decision                     | on a push to `main`, after the report is published: a NO-GO (or no decision) fails the pipeline                                                              |
 
 ## Agentic QA
 
