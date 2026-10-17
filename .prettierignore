@@ -1,6 +1,7 @@
 node_modules/
 .venv/
 .rag/
+.pytest_cache/
 out/
 playwright-report/
 test-results/
@@ -10,5 +11,5 @@ bun.lock
 uv.lock
 knowledge/
 .claude/
-# verbatim outputs of real runs
+# outputs of real runs, kept in the layout they were recorded in; the wording of some was edited later (1ea4963)
 docs/examples/
