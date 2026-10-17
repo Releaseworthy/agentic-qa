@@ -60,14 +60,15 @@ Each subagent gets only the knowledge tools its role needs (read-only for the sc
 PreToolUse hook (`agents/tool-policy.ts`, wired in `.claude/settings.json`) applies the same rules to every session,
 interactive or headless:
 
-| Rule                                                                                | Why                                                                |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| only `knowledge-curator` calls `commit_knowledge`                                   | the proposer can't judge its own lesson                            |
-| only `qa-writer` calls `upsert_document`                                            | test cases and defects have one author, reviewed                   |
-| the vault changes only through the knowledge MCP, never Write/Edit or a shell write | nothing reaches `knowledge/` past the gate and the judge           |
-| a headless run writes only `tests/`, `framework/`, `out/`                           | it can't edit the app, the engines that check it, or this policy   |
-| `gh` read-only (a plain GET); PR comments only via `qa:pr-feedback`                 | anyone can comment on a public repo, so outsiders are filtered out |
-| no `git push`/`commit`/`fetch`, no network beyond localhost, no reading credentials | an injected instruction can't publish or leak                      |
+| Rule                                                                                | Why                                                                        |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| only `knowledge-curator` calls `commit_knowledge`                                   | the proposer can't judge its own lesson                                    |
+| only `qa-writer` calls `upsert_document`                                            | test cases and defects have one author, reviewed                           |
+| the vault changes only through the knowledge MCP, never Write/Edit or a shell write | nothing reaches `knowledge/` past the gate and the judge                   |
+| a headless run writes only `tests/`, `framework/`, `out/`                           | it can't edit the app, the engines that check it, or this policy           |
+| `gh` read-only (a plain GET); PR comments only via `qa:pr-feedback`                 | anyone can comment on a public repo, so outsiders are filtered out         |
+| no `git push`/`commit`/`fetch`, no network beyond localhost, no reading credentials | an injected instruction can't publish or leak                              |
+| `ui-explorer` and `manual-tester` never read `app/` (Read, Grep, Glob or the shell) | they test through the UI and API, blind to the code and its seeded defects |
 
 The hook checks every command, including ones inside pipes, `&&`, `$(…)`, `bash -c`, `xargs` and redirects. It fails
 closed: a call whose hook input it can't read, or that the policy throws on, is refused, and `"onFailure": "block"`

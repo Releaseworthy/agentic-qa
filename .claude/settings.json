@@ -33,7 +33,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit|mcp__knowledge__commit_knowledge|mcp__knowledge__upsert_document",
+        "matcher": "Bash|Write|Edit|MultiEdit|NotebookEdit|Read|Grep|Glob|mcp__knowledge__commit_knowledge|mcp__knowledge__upsert_document",
         "hooks": [
           {
             "type": "command",

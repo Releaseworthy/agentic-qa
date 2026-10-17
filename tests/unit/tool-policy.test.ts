@@ -151,6 +151,80 @@ describe('shell', () => {
   });
 });
 
+describe('black-box agents', () => {
+  const explorer = { agentType: 'ui-explorer', cwd: ROOT };
+  const tester = { agentType: 'manual-tester', cwd: ROOT };
+  const APP_RULE = 'UI and API only';
+
+  it('ui-explorer and manual-tester never Read, Grep or Glob app/', () => {
+    for (const caller of [explorer, tester]) {
+      const who = caller.agentType;
+      expect(denial('Read', { file_path: at('app/defects.ts') }, caller), who).toContain(APP_RULE);
+      expect(denial('Read', { file_path: 'app/routes/test-hooks.ts' }, caller), `${who}, relative`).toContain(APP_RULE);
+      expect(denial('Grep', { pattern: 'defect', path: at('app') }, caller), `${who}, in app/`).toContain(APP_RULE);
+      expect(denial('Grep', { pattern: 'BR-SHIP-01' }, caller), `${who}, from the root`).toContain(APP_RULE);
+      expect(denial('Glob', { pattern: 'app/**/*.ts' }, caller), `${who}, glob from the root`).toContain(APP_RULE);
+    }
+  });
+
+  it('they still read the vault, the framework and their own evidence', () => {
+    expect(denial('Read', { file_path: at('knowledge/rules/BR-SHIP-01.md') }, explorer)).toBeUndefined();
+    expect(denial('Read', { file_path: at('out/sessions/ux1.arranged.json') }, explorer)).toBeUndefined();
+    expect(denial('Read', { file_path: at('apps/x.ts') }, explorer), 'a sibling, not app/').toBeUndefined();
+    expect(denial('Grep', { pattern: 'free', path: at('knowledge') }, explorer)).toBeUndefined();
+    expect(denial('Glob', { pattern: '*.md', path: at('knowledge/rules') }, tester)).toBeUndefined();
+  });
+
+  it('refuses a shell read of app/ and a search from a folder that holds it', () => {
+    for (const bad of [
+      'cat app/defects.ts',
+      'head -50 app/routes/test-hooks.ts',
+      'tail -n 20 ./app/defects.ts',
+      `cat ${at('app/defects.ts').replaceAll('\\', '/')}`,
+      'grep -n SHOP app/defects.ts',
+      'grep -rn BR-SHIP-01 .',
+      'grep -r defect',
+      'rg SHOPLITE_DEFECTS',
+      'find . -name "*.ts"',
+      'ls app',
+      'cd app && cat defects.ts',
+      'git show HEAD:app/defects.ts',
+      'git grep qty-limit',
+      'timeout 5 cat app/defects.ts',
+      `bash -c 'head app/defects.ts'`,
+      'echo $(cat app/defects.ts)',
+    ])
+      expect(bashDenial(bad, explorer), bad).toContain(APP_RULE);
+  });
+
+  it('lets their own commands through', () => {
+    for (const ok of [
+      'bun run qa:arrange cart --name ux1 priceCents=5000',
+      'bunx playwright-cli -s=ux1 open http://localhost:3100',
+      'bunx playwright-cli -s=ux1 screenshot --filename out/evidence/ux1-cart.png',
+      'curl -s http://localhost:3100/api/products',
+      'cat out/sessions/ux1.arranged.json',
+      'grep -n "free shipping" knowledge/rules/BR-SHIP-01.md',
+      'grep -rn BR-SHIP-01 knowledge',
+      'bun run app',
+    ])
+      expect(bashDenial(ok, explorer), ok).toBeUndefined();
+  });
+
+  it('code-scout, the other subagents and the orchestrator keep reading app/', () => {
+    for (const caller of [
+      { agentType: 'code-scout', cwd: ROOT },
+      { agentType: 'test-author', cwd: ROOT },
+      { cwd: ROOT },
+    ]) {
+      const who = caller.agentType ?? 'orchestrator';
+      expect(denial('Read', { file_path: at('app/defects.ts') }, caller), who).toBeUndefined();
+      expect(denial('Grep', { pattern: 'defect' }, caller), who).toBeUndefined();
+      expect(bashDenial('cat app/defects.ts', caller), who).toBeUndefined();
+    }
+  });
+});
+
 describe('PR feedback', () => {
   const c = (author_association: string, body: string, type = 'User'): RawComment => ({
     author_association,

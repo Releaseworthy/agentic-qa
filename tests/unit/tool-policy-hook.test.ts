@@ -54,6 +54,9 @@ describe('tool-policy hook, run as Claude Code runs it', () => {
       JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'git push origin main' }, cwd: ROOT }),
     );
     expect(refusal(pushed.stdout)).toContain('git push');
+    const peek = { tool_name: 'Read', tool_input: { file_path: join(ROOT, 'app', 'defects.ts') }, cwd: ROOT };
+    expect(refusal(hook(JSON.stringify({ ...peek, agent_type: 'ui-explorer' })).stdout), 'black box').toContain('app/');
+    expect(hook(JSON.stringify(peek)).stdout, 'the orchestrator reads app/').toBe('');
   });
 
   it('is wired to block the call when it fails or times out', () => {
@@ -65,7 +68,7 @@ describe('tool-policy hook, run as Claude Code runs it', () => {
     expect(policy?.onFailure).toBe('block');
     // The braced placeholder is rewritten for PowerShell too; a bare $CLAUDE_PROJECT_DIR is $null there.
     expect(policy?.command).toContain('${CLAUDE_PROJECT_DIR}');
-    for (const tool of ['Bash', 'Write', 'Edit', 'mcp__knowledge__commit_knowledge'])
+    for (const tool of ['Bash', 'Write', 'Edit', 'Read', 'Grep', 'Glob', 'mcp__knowledge__commit_knowledge'])
       expect(entry?.matcher.split('|'), tool).toContain(tool);
   });
 });
