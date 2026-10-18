@@ -36,6 +36,9 @@ export type SiteData = {
 /** localStorage key for the reader's theme choice. */
 export const THEME_KEY = 'agentic-qa-theme';
 
+/** The company that runs this approach as a service, linked from the footer. */
+export const SERVICE = { name: 'Releaseworthy', url: 'https://releaseworthy.app/agentic-qa/' } as const;
+
 type Tone = 'ok' | 'warn' | 'bad' | 'info' | 'pin' | 'neutral';
 
 const ENTITIES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -747,6 +750,7 @@ ${signoffSection()}
 <footer class="footer">
 <div class="wrap footer__in">
 <p>Built by <code>scripts/site-index.ts</code> from the release gate, traceability and triage engines in <a href="${repo}">agentic-qa</a>.</p>
+<p>agentic-qa is the public sample project of ${SERVICE.name}, which runs <a href="${SERVICE.url}">agentic QA as a service</a> with a human QA engineer.</p>
 <p>Markdown: ${data('release-gate.md', 'gate')}, ${data('traceability.md', 'traceability')}, ${data('triage.md', 'triage')}. JSON: ${data('release-gate.json', 'gate')}, ${data('traceability.json', 'traceability')}, ${data('triage.json', 'triage')}.</p>
 </div>
 </footer>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import type { GateReport } from '@qa/release-gate';
-import { formatDuration, renderSite, THEME_KEY, type SiteData } from '@qa/site-report';
+import { formatDuration, renderSite, SERVICE, THEME_KEY, type SiteData } from '@qa/site-report';
 import type { TraceRow } from '@qa/traceability';
 import { formatInZone, fromIso } from '@utils/date';
 
@@ -163,6 +163,9 @@ describe('renderSite', () => {
     expect(html).toContain('<a href="https://github.com/o/r/actions/runs/1">#22</a>');
     expect(html).toContain('<code>c387b32</code>');
     expect(visibleText(html)).toContain('43.7 s');
+    // The footer names the company behind the project and links its service page.
+    expect(html).toContain(`<a href="${SERVICE.url}">agentic QA as a service</a>`);
+    expect(visibleText(html)).toContain(`agentic-qa is the public sample project of ${SERVICE.name}`);
   });
 });
 

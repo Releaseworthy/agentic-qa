@@ -12,6 +12,10 @@ The app under test is **ShopLite**, a small shop with a REST API and a web UI th
 switchable **seeded defects**, so you can actually check whether the agents and the tests catch bugs. Everything runs
 locally and in CI, with no external system.
 
+agentic-qa is the public sample project of [Releaseworthy](https://releaseworthy.app/), which runs the same approach
+as a service: [agentic QA](https://releaseworthy.app/agentic-qa/) for web, API and mobile apps, with a human QA
+engineer who reviews every change and signs the release call.
+
 **Stack:** Claude Agent SDK · Claude Code skills and subagents · MCP · Playwright + TypeScript on Bun ·
 ChromaDB + Neo4j (Hybrid RAG, Python/uv) · LangSmith · ripgrep · GitHub Actions · Azure Pipelines
 
