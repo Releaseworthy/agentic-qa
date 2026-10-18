@@ -1,7 +1,7 @@
 # agentic-qa
 
-[![QA pipeline](https://github.com/hoanglan9569/agentic-qa/actions/workflows/ci.yml/badge.svg)](https://github.com/hoanglan9569/agentic-qa/actions/workflows/ci.yml)
-[![QA report](https://img.shields.io/badge/QA_report-GitHub_Pages-2ea44f)](https://hoanglan9569.github.io/agentic-qa/)
+[![QA pipeline](https://github.com/Releaseworthy/agentic-qa/actions/workflows/ci.yml/badge.svg)](https://github.com/Releaseworthy/agentic-qa/actions/workflows/ci.yml)
+[![QA report](https://img.shields.io/badge/QA_report-GitHub_Pages-2ea44f)](https://releaseworthy.github.io/agentic-qa/)
 
 A set of AI agents that handle the QA work on a project from start to finish. They plan from risk, refine acceptance
 criteria, write and run API and UI tests, explore the app, verify and retest bugs, run impact-based regression and
@@ -26,7 +26,7 @@ ChromaDB + Neo4j (Hybrid RAG, Python/uv) · LangSmith · ripgrep · GitHub Actio
 | The agents do real QA work       | Headless runs: `refine-ac` → 13 questions for Product and 8 testable criteria ($1.17); `adhoc-test` with a charter naming the 4 planted defect areas → all 4 found ($0.77; a blind run is pending); `learn` → lessons through gate and judge ($0.53, $0.68). [Runs](docs/agents.md#real-runs) |
 | The suite catches bugs           | Every seeded defect turns a test tagged with its rule from green to red: [4 of 4](docs/examples/defect-detection.md), checked on every push                                                                                                                                                   |
 | Tests are independent            | 112 API + Chromium tests (164 runs with Firefox and WebKit), fully parallel, each on data of its own                                                                                                                                                                                          |
-| Releases are decided on evidence | Go/No-Go, traceability and the defect board, published to [GitHub Pages](https://hoanglan9569.github.io/agentic-qa/) on every push to `main`, where a NO-GO then fails the pipeline                                                                                                           |
+| Releases are decided on evidence | Go/No-Go, traceability and the defect board, published to [GitHub Pages](https://releaseworthy.github.io/agentic-qa/) on every push to `main`, where a NO-GO then fails the pipeline                                                                                                          |
 | Retrieval quality is measured    | Vector vs graph vs hybrid on tuning, dev and held-out questions. On the 59 held-out ones, hybrid is one question ahead of vector. [Eval](docs/knowledge.md#evaluation)                                                                                                                        |
 | Agent output is checked          | A heal guard blocks weakened tests, a knowledge guard blocks uncurated vault edits, one tool policy covers every session. [How](docs/agents.md#tool-policy)                                                                                                                                   |
 

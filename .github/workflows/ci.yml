@@ -293,7 +293,7 @@ jobs:
         env:
           DECISION: ${{ needs.report.outputs.decision }}
         run: |
-          echo "Release gate: ${DECISION:-no decision} (report: https://hoanglan9569.github.io/agentic-qa/)"
+          echo "Release gate: ${DECISION:-no decision} (report: https://releaseworthy.github.io/agentic-qa/)"
           if [[ "$DECISION" != "GO" && "$DECISION" != "CONDITIONAL GO" ]]; then
             echo "::error title=Release gate::${DECISION:-no decision} on main. Blockers are in the published report."
             exit 1

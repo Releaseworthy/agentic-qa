@@ -39,7 +39,7 @@ const zone = env.REPORT_TIME_ZONE ?? 'Asia/Ho_Chi_Minh';
 const repoUrl =
   env.GITHUB_SERVER_URL && env.GITHUB_REPOSITORY
     ? `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}`
-    : 'https://github.com/hoanglan9569/agentic-qa';
+    : 'https://github.com/Releaseworthy/agentic-qa';
 
 const run: RunInfo = {
   label: env.GITHUB_RUN_NUMBER ? `#${env.GITHUB_RUN_NUMBER}` : 'Local',
