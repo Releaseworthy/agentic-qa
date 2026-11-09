@@ -19,4 +19,3 @@ export const Timeout = {
 } as const;
 
 export type Timeout = (typeof Timeout)[keyof typeof Timeout];
-

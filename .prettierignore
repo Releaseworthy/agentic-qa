@@ -13,3 +13,5 @@ knowledge/
 .claude/
 # outputs of real runs, kept in the layout they were recorded in; the wording of some was edited later (1ea4963)
 docs/examples/
+# vendored verbatim from the deepseek-general workspace (playwright/lib/lint.ts): kept byte-identical
+framework/utils/playwright-lint.ts
