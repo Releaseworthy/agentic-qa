@@ -13,7 +13,8 @@ import { join, relative } from "node:path";
  * - timeouts: RULE-TIMEOUTS-FROM-A-TIMEOUT-ENUM-LIKE-OMNIA-DEFAULT-UNLESS-NO-SIGNAL
  *
  * What the rules allow as a last resort (a page script no locator can replace, an
- * XPath, a timeout above DEFAULT) carries `// last-resort: <why>` on its line or in
+ * XPath, a timeout above DEFAULT, a sampling pause inside a page script) carries
+ * `// last-resort: <why>` on its line or in
  * the comment lines right above it. Comment lines and trailing ` // ` comments are
  * not checked. Click and fill are not checked: they get a read-back only where one
  * failed (RULE-WHEN-A-FILL-OR-CLICK-DOES-NOT-TAKE-EFFECT-VERIFY-TYPE-AND-WAIT).
@@ -49,11 +50,14 @@ const CHECKS: Check[] = [
   { category: "waits", why: "networkidle: wait for the element or response that proves ready", pattern: /networkidle/i },
   { category: "waits", why: "isVisible(): use waitFor visible or appears()", pattern: /\.isVisible\s*\(/ },
   {
+    // Any name: renaming `resolve` must not slip a sleep past the check. A pause inside a page script
+    // (sampling an animation over time in the page) is the one marked exception.
     category: "waits",
-    why: "sleep in a browser file: use retryUntil",
-    pattern: /\bBun\.sleep\s*\(|\bsetTimeout\s*\(\s*(resolve|res|r)\s*,/,
+    why: "sleep in a browser file: use retryUntil (an in-page sampling pause needs a last-resort reason)",
+    pattern: /\bBun\.sleep\s*\(|new Promise\s*\(\s*\(?\s*(\w+)\s*\)?\s*=>\s*setTimeout\s*\(\s*\1\s*,|\bsetTimeout\s*\(\s*(resolve|res|r)\s*,/,
     browserOnly: true,
     sleep: true,
+    markable: true,
   },
   {
     category: "evaluate",
