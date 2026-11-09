@@ -16,6 +16,7 @@
     "test:all": "bun --bun playwright test",
     "test:smoke": "bun --bun playwright test --project=api --project=chromium --grep @smoke",
     "test:unit": "bun test tests/unit",
+    "check:playwright": "bun test tests/playwright-rules.test.ts",
     "test:staging": "TEST_ENV=staging bun --bun playwright test --project=api --project=chromium",
     "test:live": "TEST_ENV=live bun --bun playwright test --project=api --project=chromium",
     "report": "bun --bun playwright show-report",

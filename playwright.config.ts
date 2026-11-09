@@ -18,7 +18,7 @@ export default defineConfig({
   testMatch: '**/*.spec.ts',
   globalSetup: './framework/global-setup.ts',
   timeout: Timeout.TEST,
-  expect: { timeout: Timeout.EXPECT },
+  expect: { timeout: Timeout.DEFAULT },
   // A read-only environment (live) runs only the tests that change nothing.
   grep: env.readOnly ? /@readonly/ : undefined,
   fullyParallel: true,
@@ -28,7 +28,8 @@ export default defineConfig({
   reporter,
   use: {
     baseURL: env.baseUrl,
-    actionTimeout: Timeout.ACTION,
+    actionTimeout: Timeout.DEFAULT,
+    navigationTimeout: Timeout.DEFAULT,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
